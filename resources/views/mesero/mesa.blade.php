@@ -10,7 +10,13 @@
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
-                <div class="fw-bold fs-5 lh-1">Mesa {{ $mesa->numero }}</div>
+                <div class="fw-bold fs-5 lh-1">
+                    @if($mesa->es_para_llevar)
+                        🛍️ Llevar {{ $mesa->numero }}
+                    @else
+                        Mesa {{ $mesa->numero }}
+                    @endif
+                </div>
                 <span class="badge {{ $mesa->estado == 'libre' ? 'bg-success' : 'bg-danger' }} fw-normal" style="font-size: 0.7rem;">
                     {{ ucfirst($mesa->estado) }}
                 </span>
@@ -148,7 +154,13 @@
     <div class="offcanvas offcanvas-bottom rounded-top-4" tabindex="-1" id="detallePedido" style="height: 80vh;">
         <div class="offcanvas-header border-bottom px-3 py-3">
             <div>
-                <h5 class="offcanvas-title fw-bold mb-0">🧾 Detalle Mesa {{ $mesa->numero }}</h5>
+                <h5 class="offcanvas-title fw-bold mb-0">
+                    @if($mesa->es_para_llevar)
+                        🛍️ Detalle Llevar #{{ $mesa->numero }}
+                    @else
+                        🧾 Detalle Mesa {{ $mesa->numero }}
+                    @endif
+                </h5>
                 <span class="text-muted" style="font-size: 0.85rem;">Pedido actual registrado</span>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>

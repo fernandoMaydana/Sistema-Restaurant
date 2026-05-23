@@ -63,7 +63,13 @@
                             <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-people-fill"></i> {{ $mesa->capacidad }}</small>
                         </div>
                         
-                        <h4 class="fw-bold mb-0 text-dark">Mesa {{ $mesa->numero }}</h4>
+                        <h4 class="fw-bold mb-0 text-dark">
+                            @if($mesa->es_para_llevar)
+                                🛍️ Llevar {{ $mesa->numero }}
+                            @else
+                                Mesa {{ $mesa->numero }}
+                            @endif
+                        </h4>
                         
                         @if(!$libre)
                             <div class="mt-2 text-success fw-bold">
@@ -108,7 +114,13 @@
             <div class="offcanvas offcanvas-bottom rounded-top-4" tabindex="-1" id="mesa-offcanvas-{{ $mesa->id }}" style="height: 80vh;">
                 <div class="offcanvas-header border-bottom px-3 py-3 bg-light rounded-top-4">
                     <div>
-                        <h5 class="offcanvas-title fw-bold mb-0">🧾 Detalle Mesa {{ $mesa->numero }}</h5>
+                        <h5 class="offcanvas-title fw-bold mb-0">
+                            @if($mesa->es_para_llevar)
+                                🛍️ Detalle Llevar #{{ $mesa->numero }}
+                            @else
+                                🧾 Detalle Mesa {{ $mesa->numero }}
+                            @endif
+                        </h5>
                         <span class="text-muted" style="font-size: 0.85rem;">Pedido {{ $pedidoActivo->estado === 'cuenta_solicitada' ? '(Cuenta Solicitada)' : 'Abierto' }}</span>
                     </div>
                     <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>

@@ -16,7 +16,12 @@
         <div class="text-center font-monospace">
             <h4 style="margin: 0; font-size: 12pt;">RESTAURANTE</h4>
             <p style="font-size: 10pt; margin-bottom: 5px; opacity: 0.8;">DETALLE DE CONSUMO</p>
-            <h2 style="margin: 5px 0; font-size: 24pt; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h2>
+            @if($pedido->mesa->es_para_llevar)
+                <h2 style="margin: 5px 0; font-size: 24pt; font-weight: bold; background: #000; color: #fff; padding: 3px;">* PARA LLEVAR *</h2>
+                <h2 style="margin: 5px 0; font-size: 24pt; font-weight: bold;">PEDIDO {{ $pedido->mesa->numero }}</h2>
+            @else
+                <h2 style="margin: 5px 0; font-size: 24pt; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h2>
+            @endif
             
             <p style="font-size: 10pt; line-height: 1.2; margin: 10px 0;">
                 --------------------------------<br>

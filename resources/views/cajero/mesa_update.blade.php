@@ -8,7 +8,14 @@
             <a href="{{ route('cajero.salon') }}" class="btn btn-outline-secondary">
                 <i class="bi bi-arrow-left"></i> Volver al Salón
             </a>
-            <h2 class="mb-0 fw-bold">Actualizar Mesa {{ $mesa->numero }}</h2>
+            <h2 class="mb-0 fw-bold">
+                Actualizar 
+                @if($mesa->es_para_llevar)
+                    🛍️ Llevar {{ $mesa->numero }}
+                @else
+                    Mesa {{ $mesa->numero }}
+                @endif
+            </h2>
             <span class="badge {{ $mesa->estado == 'libre' ? 'bg-success' : 'bg-danger' }} fs-6">
                 {{ ucfirst($mesa->estado) }}
             </span>

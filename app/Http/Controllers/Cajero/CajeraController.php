@@ -535,7 +535,11 @@ class CajeraController extends Controller
             $printer->setTextSize(3, 3); // Más grande
             $printer->text("COMANDA\n");
             $printer->setTextSize(4, 4); // Aún más grande
-            $printer->text("MESA " . $pedido->mesa->numero . "\n");
+            if ($pedido->mesa->es_para_llevar) {
+                $printer->text("LLEVAR " . $pedido->mesa->numero . "\n");
+            } else {
+                $printer->text("MESA " . $pedido->mesa->numero . "\n");
+            }
             $printer->setTextSize(1, 1);
             $printer->text("--------------------------------\n");
             $printer->setTextSize(1, 2); // Letras altas
@@ -602,7 +606,11 @@ class CajeraController extends Controller
             $printer->setTextSize(1, 1);
             $printer->text("DETALLE DE CONSUMO\n");
             $printer->setTextSize(2, 2);
-            $printer->text("MESA " . $pedido->mesa->numero . "\n");
+            if ($pedido->mesa->es_para_llevar) {
+                $printer->text("LLEVAR " . $pedido->mesa->numero . "\n");
+            } else {
+                $printer->text("MESA " . $pedido->mesa->numero . "\n");
+            }
             $printer->setTextSize(1, 1);
             $printer->text("--------------------------------\n");
             $printer->text("Mesero: " . strtoupper($pedido->mesero->name) . "\n");
@@ -668,7 +676,11 @@ class CajeraController extends Controller
             $printer->text("Fecha: " . $factura->created_at->format('d/m/Y H:i:s') . "\n");
             $printer->text("Nro. Factura: #" . str_pad($factura->id, 6, '0', STR_PAD_LEFT) . "\n");
             $printer->text("Cajero: " . strtoupper($factura->cajero->name) . "\n");
-            $printer->text("Mesa: " . $factura->pedido->mesa->numero . "\n");
+            if ($factura->pedido->mesa->es_para_llevar) {
+                $printer->text("Pedido: Llevar #" . $factura->pedido->mesa->numero . "\n");
+            } else {
+                $printer->text("Mesa: " . $factura->pedido->mesa->numero . "\n");
+            }
             $printer->text("--------------------------------\n");
             $printer->text("CLIENTE: " . strtoupper($factura->cliente_nombre ?? 'CONSUMIDOR FINAL') . "\n");
             $printer->text("NIT/CI: " . ($factura->cliente_nit_ci ?? '-----------') . "\n");

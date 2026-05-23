@@ -44,7 +44,13 @@
                                     <div style="height: 5px; width: 100%; background: {{ $libre ? '#2ec4b6' : '#e63946' }};"></div>
 
                                     <div class="card-body p-3 d-flex flex-column align-items-center">
-                                        <h4 class="fw-bold mb-1 text-dark">MESA {{ $mesa->numero }}</h4>
+                                        <h4 class="fw-bold mb-1 text-dark">
+                                            @if($mesa->es_para_llevar)
+                                                🛍️ LLEVAR {{ $mesa->numero }}
+                                            @else
+                                                MESA {{ $mesa->numero }}
+                                            @endif
+                                        </h4>
                                         
                                         @if(!$libre)
                                             {{-- Información Operativa --}}
@@ -113,7 +119,13 @@
                 <div class="card border-0 shadow-sm rounded-4 h-100 detail-pane" id="detalle-{{ $mesa->id }}" style="display: none;">
                     <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="fw-bold mb-0">Mesa {{ $mesa->numero }}</h4>
+                            <h4 class="fw-bold mb-0">
+                                @if($mesa->es_para_llevar)
+                                    🛍️ Para Llevar #{{ $mesa->numero }}
+                                @else
+                                    Mesa {{ $mesa->numero }}
+                                @endif
+                            </h4>
                             <span class="badge {{ !$pedidoActivo ? 'bg-success' : 'bg-danger' }} rounded-pill" style="font-size: 0.7rem;">
                                 {{ !$pedidoActivo ? 'Disponible' : 'Ocupada' }}
                             </span>

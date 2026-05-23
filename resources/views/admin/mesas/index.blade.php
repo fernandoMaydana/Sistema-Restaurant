@@ -24,7 +24,12 @@
                     @foreach($mesas as $mesa)
                         <tr>
                             <td>{{ $mesa->id }}</td>
-                            <td class="fw-bold">Mesa {{ $mesa->numero }}</td>
+                            <td class="fw-bold">
+                                Mesa {{ $mesa->numero }}
+                                @if($mesa->es_para_llevar)
+                                    <span class="badge bg-info text-dark small ms-1"><i class="bi bi-bag-fill"></i> Para Llevar</span>
+                                @endif
+                            </td>
                             <td><i class="bi bi-people-fill"></i> {{ $mesa->capacidad }} personas</td>
                             <td>
                                 @if($mesa->estado == 'libre')

@@ -10,7 +10,12 @@
             </a>
             <span class="h2 fw-bold mb-0">
                 <i class="bi bi-credit-card me-2 text-primary"></i>
-                Procesar Pago — Mesa {{ $pedido->mesa->numero }}
+                Procesar Pago — 
+                @if($pedido->mesa->es_para_llevar)
+                    🛍️ Llevar {{ $pedido->mesa->numero }}
+                @else
+                    Mesa {{ $pedido->mesa->numero }}
+                @endif
             </span>
         </div>
         <div class="col-md-6 text-md-end">
@@ -117,7 +122,7 @@
 
                             <div class="col-12 mt-5">
                                 <button type="submit" class="btn btn-primary w-100 py-4 fs-3 fw-black rounded-4 shadow"
-                                        onclick="return confirm('¿Confirmar pago y liberar Mesa {{ $pedido->mesa->numero }}?')">
+                                        onclick="return confirm('¿Confirmar pago y liberar {{ $pedido->mesa->es_para_llevar ? 'Llevar #' : 'Mesa ' }}{{ $pedido->mesa->numero }}?')">
                                     <i class="bi bi-check2-circle me-3"></i>
                                     PROCESAR COBRO · LIBERAR MESA
                                 </button>

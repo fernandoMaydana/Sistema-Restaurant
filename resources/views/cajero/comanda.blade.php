@@ -15,7 +15,12 @@
     <div class="thermal-ticket">
         <div class="text-center font-monospace">
             <h3 style="margin: 0; font-size: 12pt;">COMANDA DE COCINA</h3>
-            <h1 style="font-size: 32pt; margin: 5px 0; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h1>
+            @if($pedido->mesa->es_para_llevar)
+                <h2 style="font-size: 24pt; margin: 5px 0; font-weight: bold; background: #000; color: #fff; padding: 5px;">* PARA LLEVAR *</h2>
+                <h1 style="font-size: 36pt; margin: 5px 0; font-weight: bold;">PEDIDO {{ $pedido->mesa->numero }}</h1>
+            @else
+                <h1 style="font-size: 32pt; margin: 5px 0; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h1>
+            @endif
             
             <p style="font-size: 9pt; line-height: 1.2; margin: 5px 0;">
                 ------------------------<br>

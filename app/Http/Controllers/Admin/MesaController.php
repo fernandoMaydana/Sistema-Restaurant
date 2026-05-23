@@ -22,11 +22,13 @@ class MesaController extends Controller
     {
         $request->validate([
             'numero' => 'required|integer|unique:mesas,numero',
-            'capacidad' => 'required|integer|min:1'
+            'capacidad' => 'required|integer|min:1',
+            'es_para_llevar' => 'nullable|boolean'
         ]);
         
         $data = $request->all();
         $data['estado'] = 'libre';
+        $data['es_para_llevar'] = $request->has('es_para_llevar');
         \App\Models\Mesa::create($data);
 
         return redirect()->route('admin.mesas.index')->with('success', 'Mesa creada.');
@@ -43,11 +45,14 @@ class MesaController extends Controller
         $request->validate([
             'numero' => 'required|integer|unique:mesas,numero,' . $id,
             'capacidad' => 'required|integer|min:1',
-            'estado' => 'required|in:libre,ocupada'
+            'estado' => 'required|in:libre,ocupada',
+            'es_para_llevar' => 'nullable|boolean'
         ]);
         
         $mesa = \App\Models\Mesa::findOrFail($id);
-        $mesa->update($request->all());
+        $data = $request->all();
+        $data['es_para_llevar'] = $request->has('es_para_llevar');
+        $mesa->update($data);
 
         return redirect()->route('admin.mesas.index')->with('success', 'Mesa actualizada.');
     }

@@ -19,6 +19,11 @@
                 <input type="number" min="1" name="capacidad" class="form-control" required value="{{ old('capacidad', $mesa->capacidad) }}">
             </div>
 
+            <div class="mb-3 form-check form-switch">
+                <input class="form-check-input" type="checkbox" name="es_para_llevar" id="es_para_llevar" value="1" {{ old('es_para_llevar', $mesa->es_para_llevar) ? 'checked' : '' }}>
+                <label class="form-check-label" for="es_para_llevar">¿Es una mesa para llevar / Delivery?</label>
+            </div>
+
             <div class="mb-3">
                 <label>Estado Activo</label>
                 <select name="estado" class="form-control" required>

@@ -11,7 +11,11 @@
             </a>
             <span class="h4 fw-bold">
                 <i class="bi bi-grid-1x2-fill me-1 text-primary"></i>
-                Mesa {{ $mesa->numero }}
+                @if($mesa->es_para_llevar)
+                    🛍️ Llevar {{ $mesa->numero }}
+                @else
+                    Mesa {{ $mesa->numero }}
+                @endif
             </span>
             <span class="badge bg-secondary ms-2">{{ $mesa->capacidad }} personas</span>
         </div>
