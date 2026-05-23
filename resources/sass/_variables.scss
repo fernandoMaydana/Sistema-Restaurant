@@ -1,0 +1,37 @@
+// ─── PALETA CLARA MINIMALISTA ────────────────────────────────────────────────
+$body-bg:               #f5f6fa;
+$body-color:            #1a1d23;
+
+// Bootstrap overrides
+$primary:               #4361ee;
+$secondary:             #adb5bd;
+$success:               #2ec4b6;
+$warning:               #f4a261;
+$danger:                #e63946;
+$info:                  #4cc9f0;
+$light:                 #f8f9fc;
+$dark:                  #1a1d23;
+
+// Cards / surfaces
+$card-bg:               #ffffff;
+$card-border-radius:    0.75rem;
+$card-border-color:     #e8eaf0;
+$card-box-shadow:       0 2px 12px rgba(0, 0, 0, 0.06);
+
+// Navbar
+$navbar-bg:             #ffffff;
+$navbar-border-color:   #e8eaf0;
+
+// Typography
+$font-family-sans-serif: 'Inter', 'Nunito', sans-serif;
+$font-size-base:         0.9rem;
+$line-height-base:       1.6;
+
+// Sidebar
+$sidebar-bg:            #ffffff;
+$sidebar-width:         240px;
+
+// Border radius globales
+$border-radius:         0.5rem;
+$border-radius-sm:      0.375rem;
+$border-radius-lg:      0.75rem;
