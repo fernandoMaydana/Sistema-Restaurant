@@ -100,9 +100,6 @@ Ejecuta los siguientes comandos uno por uno dentro de la carpeta `/c/xampp/htdoc
    ```bash
    composer install --no-dev --optimize-autoloader
    ```
-   
-   > 💡 **Truco para ahorrar tiempo (Copiar por USB):** Si el internet del local es lento o quieres saltarte este paso que suele tardar, puedes copiar directamente la carpeta **`vendor`** de tu laptop y pegarla en la carpeta del proyecto en la PC del local usando tu pendrive. Si haces esto, **no necesitas ejecutar `composer install`** en el local.
-
 2. Generar la clave de seguridad de la aplicación:
    ```bash
    php artisan key:generate
@@ -112,9 +109,6 @@ Ejecuta los siguientes comandos uno por uno dentro de la carpeta `/c/xampp/htdoc
    npm install
    npm run build
    ```
-   
-   > 💡 **Otro ahorro de tiempo (Assets compilados):** Al igual que con composer, también puedes copiar la carpeta **`node_modules`** por USB de tu laptop a la PC del local para evitar hacer el `npm install`. Si lo haces, solo tendrías que correr `npm run build` para compilar los estilos.
-
 
 ---
 
@@ -167,3 +161,32 @@ php artisan serve --host=0.0.0.0
 - [ ] ¿Importaste el archivo `restaurante_db.sql` en phpMyAdmin?
 - [ ] ¿La impresora térmica está encendida y compartida con el nombre `EPSON_TM`?
 - [ ] ¿Ejecutaste `npm run build` para que se vean todos los estilos premium de la aplicación?
+
+---
+
+## 🛠️ Solución de Problemas Comunes
+
+### 1. Las imágenes no se muestran o no se guardan (Error 404 / Enlace roto)
+En Laravel, las imágenes se guardan en una carpeta protegida (`storage/app/public`) y se necesita crear un "puente" o acceso directo hacia la carpeta pública. Si no lo has creado en la PC del local, no verás las imágenes.
+* **Solución:** Abre la terminal de Git Bash en la carpeta del proyecto en la PC del local y ejecuta:
+  ```bash
+  php artisan storage:link
+  ```
+  Esto creará el acceso directo necesario automáticamente.
+
+### 2. Error al intentar subir imágenes (Límites de tamaño)
+Hay dos lugares que controlan el peso máximo de las imágenes que puedes subir:
+
+* **El validador de Laravel (2 MB):**
+  En el controlador [ProductoController.php](file:///c:/Users/Fernando/OneDrive/Desktop/htdocs/sistema-restaurante/app/Http/Controllers/Admin/ProductoController.php#L49) hay una regla que valida `'imagen' => 'nullable|image|max:2048'`. Esto limita las imágenes a un máximo de **2 Megabytes**. Si tomas una foto con un celular moderno, esta pesará más de 2MB y Laravel rechazará la subida mostrando un error de validación.
+  * **Solución:** Puedes reducir la foto antes de subirla o cambiar el valor `2048` por uno mayor (ej. `10240` para 10MB) en el código.
+
+* **La configuración de PHP en XAMPP (Por defecto 2 MB):**
+  Si al subir una foto la página se queda en blanco, da un error 500 o expira la sesión, es por el límite de XAMPP.
+  * **Solución:**
+    1. Abre el Panel de Control de **XAMPP**.
+    2. Haz clic en el botón **Config** en la línea de **Apache** y selecciona **php.ini**.
+    3. Busca la línea `upload_max_filesize=2M` y cámbiala a `upload_max_filesize=40M`.
+    4. Busca la línea `post_max_size=8M` y cámbiala a `post_max_size=40M`.
+    5. Guarda el archivo, cierra y **reinicia Apache** (clic en *Stop* y luego en *Start* en el panel de XAMPP).
+
