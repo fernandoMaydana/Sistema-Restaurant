@@ -187,9 +187,13 @@
                                 <a href="{{ route('cajero.cobrar', $pedidoActivo->id) }}" class="btn btn-warning w-100 py-3 fw-bold text-white fs-5 rounded-4 shadow-sm">
                                     <i class="bi bi-credit-card me-2"></i> COBRAR
                                 </a>
-                                <a href="{{ route('cajero.mesa', $mesa->id) }}" class="btn btn-link w-100 text-decoration-none mt-2 small">
-                                    <i class="bi bi-plus-circle"></i> Agregar más productos
-                                </a>
+                                <form action="{{ route('cajero.pedido.anular', $pedidoActivo->id) }}" method="POST" class="mt-2" onsubmit="return confirm('⚠️ ¿Estás seguro de ANULAR y BORRAR este pedido por completo? Esta acción devolverá los productos al inventario y liberará la mesa.')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold rounded-4 shadow-sm">
+                                        <i class="bi bi-trash3-fill me-2"></i> ANULAR PEDIDO
+                                    </button>
+                                </form>
                             </div>
                         @else
                             <div class="text-center py-5">

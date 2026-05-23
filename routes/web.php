@@ -94,6 +94,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::post('/mesa/{mesa_id}/registrar', [CajeraController::class, 'registrarItems'])->name('registrar');
     Route::post('/mesa/{mesa_id}/actualizar', [CajeraController::class, 'actualizarPedido'])->name('mesa.actualizar');
     Route::delete('/pedido-detalle/{id}', [CajeraController::class, 'eliminarItem'])->name('pedido.eliminar_item');
+    Route::delete('/pedido/{pedido_id}/anular', [CajeraController::class, 'anularPedido'])->name('pedido.anular');
 
     // Formulario y procesamiento del pago
     Route::get('/cobrar/{pedido_id}', [CajeraController::class, 'formCobrar'])->name('cobrar');

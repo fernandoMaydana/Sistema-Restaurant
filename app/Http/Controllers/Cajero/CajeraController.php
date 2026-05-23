@@ -477,6 +477,41 @@ class CajeraController extends Controller
     }
 
     /**
+     * Anula un pedido completo, devuelve el stock al inventario y libera la mesa (Solo Cajero).
+     */
+    public function anularPedido($pedido_id)
+    {
+        if (!$this->obtenerCajaAbierta()) {
+            return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para realizar esta acción.');
+        }
+
+        $pedido = Pedido::with('detalles')->findOrFail($pedido_id);
+        $mesa = Mesa::findOrFail($pedido->mesa_id);
+
+        DB::transaction(function () use ($pedido, $mesa) {
+            // 1. Devolver stock al inventario
+            foreach ($pedido->detalles as $detalle) {
+                $producto = Producto::find($detalle->producto_id);
+                if ($producto && $producto->usa_inventario) {
+                    $producto->increment('stock', $detalle->cantidad);
+                }
+            }
+
+            // 2. Eliminar detalles del pedido
+            $pedido->detalles()->delete();
+
+            // 3. Eliminar el pedido
+            $pedido->delete();
+
+            // 4. Liberar la mesa
+            $mesa->update(['estado' => 'libre']);
+        });
+
+        return redirect()->route('cajero.salon')
+            ->with('success', '✅ El pedido ha sido anulado y la mesa ha sido liberada correctamente.');
+    }
+
+    /**
      * Vista de la comanda (items pendientes de una mesa → imprimir para cocina).
      */
     public function verComanda($pedido_id)
