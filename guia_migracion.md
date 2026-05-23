@@ -100,6 +100,9 @@ Ejecuta los siguientes comandos uno por uno dentro de la carpeta `/c/xampp/htdoc
    ```bash
    composer install --no-dev --optimize-autoloader
    ```
+   
+   > 💡 **Truco para ahorrar tiempo (Copiar por USB):** Si el internet del local es lento o quieres saltarte este paso que suele tardar, puedes copiar directamente la carpeta **`vendor`** de tu laptop y pegarla en la carpeta del proyecto en la PC del local usando tu pendrive. Si haces esto, **no necesitas ejecutar `composer install`** en el local.
+
 2. Generar la clave de seguridad de la aplicación:
    ```bash
    php artisan key:generate
@@ -109,6 +112,9 @@ Ejecuta los siguientes comandos uno por uno dentro de la carpeta `/c/xampp/htdoc
    npm install
    npm run build
    ```
+   
+   > 💡 **Otro ahorro de tiempo (Assets compilados):** Al igual que con composer, también puedes copiar la carpeta **`node_modules`** por USB de tu laptop a la PC del local para evitar hacer el `npm install`. Si lo haces, solo tendrías que correr `npm run build` para compilar los estilos.
+
 
 ---
 
