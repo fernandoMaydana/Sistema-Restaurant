@@ -190,3 +190,49 @@ Hay dos lugares que controlan el peso máximo de las imágenes que puedes subir:
     4. Busca la línea `post_max_size=8M` y cámbiala a `post_max_size=40M`.
     5. Guarda el archivo, cierra y **reinicia Apache** (clic en *Stop* y luego en *Start* en el panel de XAMPP).
 
+---
+
+## 🔄 Cómo Actualizar el Sistema en la PC del Local
+
+Cuando realices mejoras, crees nuevas funciones o arregles errores en tu laptop, sigue estos pasos para pasar esas actualizaciones a la computadora del local sin perder la información de ventas que ya se registró allá.
+
+### Paso 1: Subir los cambios a GitHub (Desde tu Laptop)
+Una vez que termines de programar y probar los cambios en tu laptop, súbelos a GitHub:
+```bash
+git add .
+git commit -m "feat: descripción del cambio o mejora"
+git push origin main
+```
+
+### Paso 2: Descargar la actualización (En la PC del Local)
+1. Abre la terminal de **Git Bash** en la carpeta del proyecto (`C:\xampp\htdocs\sistema-restaurante`).
+2. Descarga la última versión de tu código:
+   ```bash
+   git pull origin main
+   ```
+
+### Paso 3: Actualizar la Base de Datos (Si hay nuevas tablas o columnas)
+Si tu actualización incluyó cambios en la base de datos (nuevas tablas, columnas o configuraciones de tablas), ejecuta el siguiente comando en la terminal:
+```bash
+php artisan migrate
+```
+> **IMPORTANTE:** Este comando es totalmente seguro. Actualizará la estructura de tu base de datos **sin borrar** los datos, platos, mesas o ventas registradas en el local. ¡Nunca uses `migrate:fresh` en el local porque eso sí borraría la base de datos!
+
+### Paso 4: Recompilar los diseños y dependencias (Si es necesario)
+Si agregaste nuevas librerías de PHP o JavaScript, o modificaste estilos visuales (CSS/Blade), ejecuta:
+```bash
+# Si instalaste nuevas librerías de PHP
+composer install --no-dev --optimize-autoloader
+
+# Si instalaste librerías de JS o cambiaste el diseño visual
+npm install
+npm run build
+```
+
+### Paso 5: Limpiar caché de Laravel
+Para asegurarte de que el sistema cargue los nuevos archivos inmediatamente y no use archivos antiguos guardados en memoria:
+```bash
+php artisan config:clear
+php artisan view:clear
+php artisan cache:clear
+```
