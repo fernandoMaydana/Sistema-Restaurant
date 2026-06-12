@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\CategoriaController;
 use App\Http\Controllers\Admin\ProductoController;
 use App\Http\Controllers\Admin\MesaController;
+use App\Http\Controllers\Admin\StockController;
 use App\Http\Controllers\Mesero\PedidoController;
 use App\Http\Controllers\Cajero\CajeraController;
 
@@ -36,6 +37,12 @@ Auth::routes();
 // 3. El "Distribuidor": Esta ruta decide a qué panel enviarte según tu rol
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
+// 4. Perfil de Usuario
+Route::middleware(['auth'])->group(function () {
+    Route::get('/perfil', [App\Http\Controllers\PerfilController::class, 'edit'])->name('perfil.edit');
+    Route::put('/perfil', [App\Http\Controllers\PerfilController::class, 'update'])->name('perfil.update');
+});
+
 // ==========================================================
 // RUTAS PROTEGIDAS POR ROL
 // ==========================================================
@@ -55,6 +62,17 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     
     // Historial de Ventas
     Route::get('/ventas', [App\Http\Controllers\Admin\HistorialVentaController::class, 'index'])->name('ventas.index');
+
+    // Reportes Financieros
+    Route::get('/reportes/productos-vendidos', [App\Http\Controllers\Admin\ReporteController::class, 'productosVendidos'])->name('reportes.productos_vendidos');
+    Route::get('/reportes/meseros', [App\Http\Controllers\Admin\ReporteController::class, 'meseros'])->name('reportes.meseros');
+    Route::get('/reportes/graficos', [App\Http\Controllers\Admin\ReporteController::class, 'graficos'])->name('reportes.graficos');
+    Route::get('/reportes/stock-critico', [App\Http\Controllers\Admin\ReporteController::class, 'stockCritico'])->name('reportes.stock_critico');
+    Route::get('/reportes/rentabilidad', [App\Http\Controllers\Admin\ReporteController::class, 'rentabilidad'])->name('reportes.rentabilidad');
+
+    // Control de Stock
+    Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
+    Route::post('/stock/compra', [StockController::class, 'registrarCompra'])->name('stock.registrar_compra');
 });
 
 // Grupo para el CAJERO
@@ -81,6 +99,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::post('/api/imprimir/cuenta/{pedido_id}', [CajeraController::class, 'apiImprimirCuenta'])->name('api.imprimir.cuenta');
     Route::post('/api/imprimir/factura/{factura_id}', [CajeraController::class, 'apiImprimirFactura'])->name('api.imprimir.factura');
     Route::post('/api/imprimir/cierre/{caja_id}', [CajeraController::class, 'apiImprimirCierre'])->name('api.imprimir.cierre');
+    Route::get('/api/check-printer', [CajeraController::class, 'checkPrinterStatus'])->name('api.check-printer');
 
     // Ver cuenta del cliente (detalle de consumo)
     Route::get('/cuenta/{pedido_id}', [CajeraController::class, 'verCuenta'])->name('cuenta');
@@ -101,6 +120,10 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::post('/cobrar/{pedido_id}', [CajeraController::class, 'procesarPago'])->name('cobrar.pagar');
     Route::get('/factura/{factura_id}', [CajeraController::class, 'verFactura'])->name('factura');
     Route::post('/factura/{factura_id}/anular', [CajeraController::class, 'anularFactura'])->name('factura.anular');
+
+    // Dividir cuenta
+    Route::get('/pedidos/{pedido_id}/dividir', [CajeraController::class, 'formDividir'])->name('pedidos.dividir');
+    Route::post('/pedidos/{pedido_id}/dividir', [CajeraController::class, 'procesarDivision'])->name('pedidos.dividir.procesar');
 
     // Inventario y Control de Stock
     Route::get('/inventario', [CajeraController::class, 'inventario'])->name('inventario');

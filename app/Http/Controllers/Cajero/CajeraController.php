@@ -120,14 +120,30 @@ class CajeraController extends Controller
         if (!$caja) return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para acceder a esta sección.');
 
         // Calcular total recaudado en esta sesión
-        $totalVentas = Factura::where('estado', 'activa')
+        $facturas = Factura::where('estado', 'activa')
             ->where('cajero_id', auth()->id())
             ->where('created_at', '>=', $caja->fecha_apertura)
-            ->sum('monto_pagado');
+            ->get();
+
+        $totalVentas = $facturas->sum('monto_pagado');
+            
+        $ventasPorMetodo = [
+            'efectivo' => 0,
+            'qr' => 0,
+            'tarjeta' => 0,
+            'transferencia' => 0
+        ];
+        
+        foreach ($facturas as $factura) {
+            $metodo = $factura->metodo_pago;
+            if (isset($ventasPorMetodo[$metodo])) {
+                $ventasPorMetodo[$metodo] += $factura->monto_pagado;
+            }
+        }
             
         $totalGastos = $caja->gastos()->sum('monto');
 
-        return view('cajero.cierre_preview', compact('caja', 'totalVentas', 'totalGastos'));
+        return view('cajero.cierre_preview', compact('caja', 'totalVentas', 'totalGastos', 'ventasPorMetodo'));
     }
 
     /**
@@ -282,7 +298,7 @@ class CajeraController extends Controller
  
         return view('cajero.mesa_update', compact('mesa', 'pedido', 'categorias'));
     }
- 
+
     /**
      * Reutilización de la lógica para registrar items.
      */
@@ -297,6 +313,7 @@ class CajeraController extends Controller
             'items.*.producto_id'          => 'required|exists:productos,id',
             'items.*.cantidad'             => 'required|integer|min:1',
             'items.*.precio_seleccionado'  => 'required|numeric|min:0',
+            'items.*.notas'                => 'nullable|string|max:255',
         ]);
  
         $mesa = Mesa::findOrFail($mesa_id);
@@ -321,13 +338,14 @@ class CajeraController extends Controller
                     }
                     $producto->decrement('stock', $item['cantidad']);
                 }
-
+ 
                 PedidoDetalle::create([
                     'pedido_id'       => $pedido->id,
                     'producto_id'     => $item['producto_id'],
                     'cantidad'        => $item['cantidad'],
                     'precio_unitario' => $item['precio_seleccionado'],
                     'estado_comanda'  => 'pendiente',
+                    'notas'           => $item['notas'] ?? null,
                 ]);
             }
  
@@ -420,6 +438,7 @@ class CajeraController extends Controller
                         'cantidad'        => $item['cantidad'],
                         'precio_unitario' => $item['precio_seleccionado'],
                         'estado_comanda'  => 'pendiente',
+                        'notas'           => $item['notas'] ?? null,
                     ]);
                 }
             }
@@ -537,6 +556,38 @@ class CajeraController extends Controller
             ->with('success', "Comanda de Mesa {$pedido->mesa->numero} marcada como impresa.");
     }
 
+    private function obtenerColumnasImpresora()
+    {
+        $width = intval(env('PRINTER_PAPER_WIDTH', 58));
+        return $width === 80 ? 48 : 32;
+    }
+
+    /**
+     * API: Verifica el estado de conexión de la ticketera física.
+     */
+    public function checkPrinterStatus()
+    {
+        try {
+            $nombreImpresora = env('PRINTER_NAME', 'EPSON_TM');
+            $connector = new WindowsPrintConnector($nombreImpresora);
+            $printer = new Printer($connector);
+            $printer->close();
+            
+            return response()->json([
+                'success' => true,
+                'connected' => true,
+                'printer_name' => $nombreImpresora
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'connected' => false,
+                'printer_name' => env('PRINTER_NAME', 'EPSON_TM'),
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
     /**
      * API: Imprime la comanda directamente usando ESC/POS
      */
@@ -562,51 +613,57 @@ class CajeraController extends Controller
             $connector = new WindowsPrintConnector($nombreImpresora);
             $printer = new Printer($connector);
 
+            $cols = $this->obtenerColumnasImpresora();
+
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             if ($esReimpresion) {
                 $printer->setTextSize(1, 1);
                 $printer->text("*** REIMPRESION ***\n");
             }
-            $printer->setTextSize(3, 3); // Más grande
-            $printer->text("COMANDA\n");
-            $printer->setTextSize(4, 4); // Aún más grande
+            $printer->setTextSize(4, 4); // Más grande y llamativo
             if ($pedido->mesa->es_para_llevar) {
                 $printer->text("LLEVAR " . $pedido->mesa->numero . "\n");
             } else {
                 $printer->text("MESA " . $pedido->mesa->numero . "\n");
             }
             $printer->setTextSize(1, 1);
-            $printer->text("--------------------------------\n");
-            $printer->setTextSize(1, 2); // Letras altas
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("Mesero: " . strtoupper($pedido->mesero->name) . "\n");
             $printer->text("Fecha: " . now()->format('d/m/Y H:i') . "\n");
-            $printer->setTextSize(1, 1);
-            $printer->text("--------------------------------\n\n");
+            $printer->text(str_repeat("-", $cols) . "\n\n");
 
             $printer->setJustification(Printer::JUSTIFY_LEFT);
-            $printer->setTextSize(1, 2); // Reducimos a 1 de ancho y 2 de alto
+            $printer->setTextSize(1, 2); // 1 de ancho y 2 de alto para legibilidad en cocina
+            
             foreach ($pedido->detalles as $det) {
+                $prefix = $det->cantidad . "  ";
+                $indent = str_repeat(" ", strlen($prefix));
+                $wrapWidth = $cols - strlen($prefix);
+                
                 $nombreCompleto = strtoupper($det->nombre_mostrar);
-                $cant = "x" . $det->cantidad;
+                $lineasNombre = explode("\n", wordwrap($nombreCompleto, $wrapWidth, "\n", true));
                 
-                // Cortamos el nombre en líneas de 26 caracteres máximo, respetando palabras
-                $lineasNombre = explode("\n", wordwrap($nombreCompleto, 26, "\n", true));
-                
-                // La primera línea va acompañada de la cantidad a la derecha
                 $primeraLinea = array_shift($lineasNombre);
-                $espacios = max(1, 32 - strlen($primeraLinea) - strlen($cant));
-                $printer->text($primeraLinea . str_repeat(" ", $espacios) . $cant . "\n");
+                $printer->text($prefix . $primeraLinea . "\n");
                 
-                // Imprimimos el resto del nombre debajo si era muy largo
                 foreach ($lineasNombre as $lineaExtra) {
-                    $printer->text($lineaExtra . "\n");
+                    $printer->text($indent . $lineaExtra . "\n");
+                }
+
+                // Imprimir notas si existen
+                if ($det->notes || $det->notas) {
+                    $notaTexto = "* NOTA: " . strtoupper($det->notes ?? $det->notas);
+                    $lineasNota = explode("\n", wordwrap($notaTexto, $wrapWidth, "\n", true));
+                    foreach ($lineasNota as $lineaNota) {
+                        $printer->text($indent . $lineaNota . "\n");
+                    }
                 }
             }
 
             $printer->text("\n");
             $printer->setTextSize(1, 1);
             $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("#" . $pedido->id . " - COPIA COCINA\n");
             $printer->text("*** RESTO-SISTEMA ***\n\n\n");
             $printer->cut();
@@ -619,7 +676,10 @@ class CajeraController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Comanda enviada a impresora.']);
         } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error de impresora: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ No se pudo establecer conexión con la ticketera. Verifica que la impresora esté encendida, conectada y que el nombre en el archivo .env sea correcto. Detalles: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -635,6 +695,8 @@ class CajeraController extends Controller
             $connector = new WindowsPrintConnector($nombreImpresora);
             $printer = new Printer($connector);
 
+            $cols = $this->obtenerColumnasImpresora();
+
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->setTextSize(2, 2);
             $printer->text("RESTAURANTE\n");
@@ -647,31 +709,64 @@ class CajeraController extends Controller
                 $printer->text("MESA " . $pedido->mesa->numero . "\n");
             }
             $printer->setTextSize(1, 1);
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("Mesero: " . strtoupper($pedido->mesero->name) . "\n");
             $printer->text("Fecha: " . now()->format('d/m/Y H:i') . "\n");
-            $printer->text("--------------------------------\n\n");
+            $printer->text(str_repeat("-", $cols) . "\n\n");
 
             $printer->setJustification(Printer::JUSTIFY_LEFT);
+            
+            if ($cols === 48) {
+                $wCant = 5;
+                $wPreu = 7;
+                $wSubt = 8;
+            } else {
+                $wCant = 4;
+                $wPreu = 5;
+                $wSubt = 7;
+            }
+            $wDetalle = $cols - $wCant - $wPreu - $wSubt;
+
+            // Encabezados de columnas
+            $hCant = str_pad("CANT", $wCant, " ", STR_PAD_RIGHT);
+            $hDetalle = str_pad("DETALLE", $wDetalle, " ", STR_PAD_RIGHT);
+            $hPreu = str_pad("PREU", $wPreu, " ", STR_PAD_LEFT);
+            $hSubt = str_pad("SUBT", $wSubt, " ", STR_PAD_LEFT);
+            
+            $printer->text($hCant . $hDetalle . $hPreu . $hSubt . "\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
+
             foreach ($pedido->detalles as $det) {
-                $cant = $det->cantidad . "x ";
-                $nombre = strtoupper(substr($det->nombre_mostrar, 0, 18));
-                $precio = "$" . number_format($det->cantidad * $det->precio_unitario, 2);
+                $cantStr = str_pad($det->cantidad, $wCant, " ", STR_PAD_RIGHT);
                 
-                $linea_izq = $cant . $nombre;
-                $espacios = max(1, 32 - strlen($linea_izq) - strlen($precio));
-                $printer->text($linea_izq . str_repeat(" ", $espacios) . $precio . "\n");
+                $precioVal = number_format($det->precio_unitario, 1, '.', '');
+                $preuStr = str_pad($precioVal, $wPreu, " ", STR_PAD_LEFT);
+                
+                $subtVal = number_format($det->cantidad * $det->precio_unitario, 2, '.', '');
+                $subtStr = str_pad($subtVal, $wSubt, " ", STR_PAD_LEFT);
+                
+                $nombre = strtoupper($det->nombre_mostrar);
+                
+                $lineasNombre = explode("\n", wordwrap($nombre, $wDetalle, "\n", true));
+                $primeraLinea = array_shift($lineasNombre);
+                
+                $printer->text($cantStr . str_pad($primeraLinea, $wDetalle, " ", STR_PAD_RIGHT) . $preuStr . $subtStr . "\n");
+                
+                $spacesBefore = str_repeat(" ", $wCant);
+                foreach ($lineasNombre as $lineaExtra) {
+                    $printer->text($spacesBefore . str_pad($lineaExtra, $wDetalle, " ", STR_PAD_RIGHT) . str_repeat(" ", $wPreu + $wSubt) . "\n");
+                }
             }
 
             $printer->text("\n");
             $printer->setJustification(Printer::JUSTIFY_RIGHT);
             $printer->setTextSize(2, 2);
-            $printer->text("TOTAL: $" . number_format($pedido->total, 2) . "\n");
+            $printer->text("TOTAL: Bs " . number_format($pedido->total, 2) . "\n");
             $printer->setTextSize(1, 1);
 
             $printer->text("\n");
             $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("GRACIAS POR SU VISITA\n");
             $printer->text("#" . $pedido->id . " - PRE-CUENTA\n");
             $printer->text("*** RESTO-SISTEMA ***\n\n\n");
@@ -680,7 +775,10 @@ class CajeraController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Cuenta enviada a impresora.']);
         } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error de impresora: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ No se pudo establecer conexión con la ticketera. Verifica que la impresora esté encendida, conectada y que el nombre en el archivo .env sea correcto. Detalles: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -696,6 +794,8 @@ class CajeraController extends Controller
             $connector = new WindowsPrintConnector($nombreImpresora);
             $printer = new Printer($connector);
 
+            $cols = $this->obtenerColumnasImpresora();
+
             // Cabecera
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->setEmphasis(true);
@@ -705,7 +805,7 @@ class CajeraController extends Controller
             $printer->setTextSize(2, 2);
             $printer->text("FACTURA\n");
             $printer->setTextSize(1, 1);
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $printer->text("Fecha: " . $factura->created_at->format('d/m/Y H:i:s') . "\n");
@@ -716,40 +816,43 @@ class CajeraController extends Controller
             } else {
                 $printer->text("Mesa: " . $factura->pedido->mesa->numero . "\n");
             }
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("CLIENTE: " . strtoupper($factura->cliente_nombre ?? 'CONSUMIDOR FINAL') . "\n");
             $printer->text("NIT/CI: " . ($factura->cliente_nit_ci ?? '-----------') . "\n");
-            $printer->text("--------------------------------\n\n");
+            $printer->text(str_repeat("-", $cols) . "\n\n");
 
             // Detalles
             foreach ($factura->pedido->detalles as $det) {
                 $cant = $det->cantidad . "x ";
-                $nombre = strtoupper(substr($det->nombre_mostrar, 0, 16));
-                $precio = "$" . number_format($det->cantidad * $det->precio_unitario, 2);
+                $precio = "Bs " . number_format($det->cantidad * $det->precio_unitario, 2);
+                
+                $nombreMaxLen = max(10, $cols - strlen($cant) - strlen($precio) - 2);
+                $nombre = strtoupper(substr($det->nombre_mostrar, 0, $nombreMaxLen));
                 
                 $linea_izq = $cant . $nombre;
-                $espacios = max(1, 32 - strlen($linea_izq) - strlen($precio));
+                $espacios = max(1, $cols - strlen($linea_izq) - strlen($precio));
                 $printer->text($linea_izq . str_repeat(" ", $espacios) . $precio . "\n");
             }
 
             // Totales
-            $printer->text("\n--------------------------------\n");
+            $printer->text("\n" . str_repeat("-", $cols) . "\n");
             $printer->setJustification(Printer::JUSTIFY_RIGHT);
+
             $printer->setTextSize(1, 2);
-            $printer->text("TOTAL: $" . number_format($factura->pedido->total, 2) . "\n");
+            $printer->text("TOTAL: Bs " . number_format($factura->monto_pagado, 2) . "\n");
             $printer->setTextSize(1, 1);
             
             $entregado = $factura->efectivo_recibido ?? $factura->monto_pagado;
             $cambio = max(0, $entregado - $factura->monto_pagado);
 
-            $printer->text("ENTREGADO: $" . number_format($entregado, 2) . "\n");
+            $printer->text("ENTREGADO: Bs " . number_format($entregado, 2) . "\n");
             $printer->setEmphasis(true);
-            $printer->text("CAMBIO: $" . number_format($cambio, 2) . "\n");
+            $printer->text("CAMBIO: Bs " . number_format($cambio, 2) . "\n");
             $printer->setEmphasis(false);
 
             // Pie de pagina
             $printer->setJustification(Printer::JUSTIFY_CENTER);
-            $printer->text("\n--------------------------------\n");
+            $printer->text("\n" . str_repeat("-", $cols) . "\n");
             $printer->text("GRACIAS POR SU PREFERENCIA\n");
             $printer->text("PROVEA ESTE TICKET PARA RECLAMOS\n");
             $printer->text("*** RESTO-SISTEMA ***\n\n\n");
@@ -761,7 +864,10 @@ class CajeraController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Factura enviada a impresora.']);
         } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error de impresora: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ No se pudo establecer conexión con la ticketera. Verifica que la impresora esté encendida, conectada y que el nombre en el archivo .env sea correcto. Detalles: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -804,11 +910,11 @@ class CajeraController extends Controller
                 if (!isset($resumenProductos[$catName])) {
                     $resumenProductos[$catName] = [];
                 }
- 
+
                 if (!isset($resumenProductos[$catName][$prodName])) {
                     $resumenProductos[$catName][$prodName] = 0;
                 }
- 
+
                 $resumenProductos[$catName][$prodName] += $detalle->cantidad;
             }
         }
@@ -821,74 +927,81 @@ class CajeraController extends Controller
             $connector = new WindowsPrintConnector($nombreImpresora);
             $printer = new Printer($connector);
 
+            $cols = $this->obtenerColumnasImpresora();
+
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->setTextSize(2, 2);
             $printer->text("REPORTE DE CIERRE\n");
             $printer->setTextSize(1, 1);
             $printer->text("RESTO-SISTEMA\n");
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $printer->text("Cajero: " . $caja->user->name . "\n");
             $printer->text("Fecha: " . \Carbon\Carbon::parse($caja->fecha_cierre ?? now())->format('d/m/Y H:i') . "\n");
-            $printer->text("--------------------------------\n\n");
+            $printer->text(str_repeat("-", $cols) . "\n\n");
 
-            $printer->text("Monto Inicial:     $" . number_format($caja->monto_inicial, 2) . "\n");
-            $printer->text("Ventas Totales:    $" . number_format($totalVentas, 2) . "\n");
-            $printer->text("--------------------------------\n");
-            $printer->text("Ventas Efectivo:   $" . number_format($ventasPorMetodo['efectivo'], 2) . "\n");
-            $printer->text("Ventas QR/Trans:   $" . number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) . "\n");
-            $printer->text("Ventas Tarjeta:    $" . number_format($ventasPorMetodo['tarjeta'], 2) . "\n");
+            // Helper para formatear línea izquierda/derecha
+            $formatoLinea = function($desc, $monto) use ($cols) {
+                $espacios = max(1, $cols - strlen($desc) - strlen($monto));
+                return $desc . str_repeat(" ", $espacios) . $monto;
+            };
+
+            $printer->text($formatoLinea("Monto Inicial:", "Bs " . number_format($caja->monto_inicial, 2)) . "\n");
+            $printer->text($formatoLinea("Ventas Totales:", "Bs " . number_format($totalVentas, 2)) . "\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
+            $printer->text($formatoLinea("Ventas Efectivo:", "Bs " . number_format($ventasPorMetodo['efectivo'], 2)) . "\n");
+            $printer->text($formatoLinea("Ventas QR:", "Bs " . number_format($ventasPorMetodo['qr'], 2)) . "\n");
+            $printer->text($formatoLinea("Ventas Tarjeta:", "Bs " . number_format($ventasPorMetodo['tarjeta'], 2)) . "\n");
+            $printer->text($formatoLinea("Ventas Transf.:", "Bs " . number_format($ventasPorMetodo['transferencia'], 2)) . "\n");
             
             if ($gastos->count() > 0) {
-                $printer->text("--------------------------------\n");
+                $printer->text(str_repeat("-", $cols) . "\n");
                 $printer->setEmphasis(true);
                 $printer->text("GASTOS (-)\n");
                 $printer->setEmphasis(false);
                 foreach ($gastos as $gasto) {
-                    $desc = substr($gasto->descripcion, 0, 20);
-                    $monto = "-$" . number_format($gasto->monto, 2);
-                    $espacios = max(1, 32 - strlen($desc) - strlen($monto));
-                    $printer->text($desc . str_repeat(" ", $espacios) . $monto . "\n");
+                    $descLimit = $cols - 12; // Dejar espacio para monto
+                    $desc = substr($gasto->descripcion, 0, $descLimit);
+                    $monto = "-Bs " . number_format($gasto->monto, 2);
+                    $printer->text($formatoLinea($desc, $monto) . "\n");
                 }
                 $txtTotalG = "TOTAL GASTOS:";
-                $montoTotalG = "-$" . number_format($totalGastos, 2);
-                $esp = max(1, 32 - strlen($txtTotalG) - strlen($montoTotalG));
+                $montoTotalG = "-Bs " . number_format($totalGastos, 2);
                 $printer->setEmphasis(true);
-                $printer->text($txtTotalG . str_repeat(" ", $esp) . $montoTotalG . "\n");
+                $printer->text($formatoLinea($txtTotalG, $montoTotalG) . "\n");
                 $printer->setEmphasis(false);
             }
 
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->setTextSize(1, 2);
             $txtEfectivo = "EFECTIVO CAJA:";
-            $montoEfectivo = "$" . number_format($caja->monto_final, 2);
-            $esp = max(1, 32 - strlen($txtEfectivo) - strlen($montoEfectivo));
-            $printer->text($txtEfectivo . str_repeat(" ", $esp) . $montoEfectivo . "\n");
+            $montoEfectivo = "Bs " . number_format($caja->monto_final, 2);
+            $printer->text($formatoLinea($txtEfectivo, $montoEfectivo) . "\n");
             $printer->setTextSize(1, 1);
             
-            $printer->text("\n--------------------------------\n");
+            $printer->text("\n" . str_repeat("-", $cols) . "\n");
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->setEmphasis(true);
             $printer->text("RESUMEN DE PRODUCTOS\n");
             $printer->setEmphasis(false);
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             
-            $printer->setJustification(Printer::JUSTIFY_LEFT);
             foreach ($resumenProductos as $categoria => $productos) {
+                $printer->setJustification(Printer::JUSTIFY_LEFT);
                 $printer->setEmphasis(true);
                 $printer->text("* " . strtoupper($categoria) . " *\n");
                 $printer->setEmphasis(false);
                 foreach ($productos as $nombre => $cantidad) {
-                    $nom = substr($nombre, 0, 26);
+                    $nomLimit = $cols - 6;
+                    $nom = substr($nombre, 0, $nomLimit);
                     $cant = "x" . $cantidad;
-                    $espacios = max(1, 32 - strlen($nom) - strlen($cant));
-                    $printer->text($nom . str_repeat(" ", $espacios) . $cant . "\n");
+                    $printer->text($formatoLinea($nom, $cant) . "\n");
                 }
                 $printer->text("\n");
             }
 
-            $printer->text("--------------------------------\n");
+            $printer->text(str_repeat("-", $cols) . "\n");
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->text("Gracias por su jornada.\n");
             $printer->text("#" . $caja->id . "\n\n\n\n");
@@ -898,7 +1011,10 @@ class CajeraController extends Controller
 
             return response()->json(['success' => true, 'message' => 'Reporte de Cierre enviado a impresora.']);
         } catch (Exception $e) {
-            return response()->json(['success' => false, 'message' => 'Error de impresora: ' . $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => '⚠️ No se pudo establecer conexión con la ticketera. Verifica que la impresora esté encendida, conectada y que el nombre en el archivo .env sea correcto. Detalles: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -1015,13 +1131,17 @@ class CajeraController extends Controller
         }
 
         $factura = DB::transaction(function () use ($request, $pedido) {
+            $montoFinal = $pedido->total;
+
             // 1. Crear la factura
             $f = Factura::create([
                 'pedido_id'         => $pedido->id,
                 'cajero_id'         => auth()->id(),
                 'cliente_nombre'    => $request->cliente_nombre,
                 'cliente_nit_ci'    => $request->cliente_nit_ci,
-                'monto_pagado'      => $pedido->total, // Guardamos el total real de la venta
+                'monto_pagado'      => $montoFinal, // Guardamos el total neto
+                'descuento'         => 0,
+                'recargo'           => 0,
                 'efectivo_recibido' => $request->monto_pagado, // Guardamos el efectivo recibido del cliente
                 'metodo_pago'       => $request->metodo_pago,
             ]);
@@ -1118,6 +1238,164 @@ class CajeraController extends Controller
 
         $producto->increment('stock', $request->cantidad);
 
+        // Registrar compra en historial
+        \App\Models\Compra::create([
+            'producto_id' => $producto->id,
+            'cantidad' => $request->cantidad,
+        ]);
+
         return redirect()->back()->with('success', '✅ Stock de "' . $producto->nombre . '" actualizado correctamente. Se sumaron ' . $request->cantidad . ' unidades (Nuevo stock: ' . $producto->stock . ').');
+    }
+
+    /**
+     * Formulario para dividir cuenta.
+     */
+    public function formDividir($pedido_id)
+    {
+        if (!$this->obtenerCajaAbierta()) {
+            return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para realizar cobros.');
+        }
+
+        $pedido = Pedido::with(['mesa', 'detalles.producto'])
+            ->findOrFail($pedido_id);
+
+        if ($pedido->estado === 'pagado') {
+            return redirect()->route('cajero.dashboard')->with('error', 'Este pedido ya fue pagado.');
+        }
+
+        return view('cajero.dividir', compact('pedido'));
+    }
+
+    /**
+     * Procesa la división de cuenta: crea un pedido separado pagado,
+     * descuenta cantidades del pedido original, crea factura y libera mesa si queda vacía.
+     */
+    public function procesarDivision(Request $request, $pedido_id)
+    {
+        if (!$this->obtenerCajaAbierta()) {
+            return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para procesar pagos.');
+        }
+
+        $request->validate([
+            'split_items' => 'required|array|min:1',
+            'split_items.*.detalle_id' => 'required|exists:pedido_detalles,id',
+            'split_items.*.cantidad' => 'required|integer|min:0',
+            'cliente_nombre' => 'nullable|string|max:255',
+            'cliente_nit_ci' => 'nullable|string|max:50',
+            'monto_pagado'   => 'required|numeric|min:0',
+            'metodo_pago'    => 'required|in:efectivo,tarjeta,qr,transferencia',
+        ]);
+
+        $pedidoOriginal = Pedido::with(['mesa', 'detalles'])->findOrFail($pedido_id);
+
+        if ($pedidoOriginal->estado === 'pagado') {
+            return redirect()->route('cajero.dashboard')->with('error', 'Este pedido ya fue pagado.');
+        }
+
+        // Validar cantidades a dividir
+        $totalDividir = 0;
+        $detallesMap = $pedidoOriginal->detalles->keyBy('id');
+        
+        $itemsProcesables = [];
+        foreach ($request->split_items as $item) {
+            $detId = $item['detalle_id'];
+            $cantDividir = intval($item['cantidad']);
+            
+            if ($cantDividir <= 0) continue;
+
+            if (!isset($detallesMap[$detId])) {
+                return redirect()->back()->with('error', 'Producto no encontrado en el pedido.');
+            }
+
+            $detalleOriginal = $detallesMap[$detId];
+            if ($cantDividir > $detalleOriginal->cantidad) {
+                return redirect()->back()->with('error', "No puedes dividir más cantidad de la existente para: {$detalleOriginal->nombre_mostrar}.");
+            }
+
+            $itemsProcesables[] = [
+                'detalle' => $detalleOriginal,
+                'cantidad' => $cantDividir
+            ];
+            $totalDividir += $cantDividir * $detalleOriginal->precio_unitario;
+        }
+
+        if (empty($itemsProcesables)) {
+            return redirect()->back()->with('error', 'Debes seleccionar al menos un producto con cantidad mayor a 0 para dividir.');
+        }
+
+        // Procesar DB Transaction
+        $factura = DB::transaction(function () use ($request, $pedidoOriginal, $itemsProcesables, $totalDividir) {
+            $montoFinal = $totalDividir;
+
+            // 1. Crear un pedido nuevo paralelo para la parte pagada
+            $pedidoNuevo = Pedido::create([
+                'mesa_id' => $pedidoOriginal->mesa_id,
+                'mesero_id' => $pedidoOriginal->mesero_id,
+                'estado' => 'pagado',
+                'total' => $montoFinal
+            ]);
+
+            // 2. Transferir/descontar los items
+            foreach ($itemsProcesables as $proc) {
+                $det = $proc['detalle'];
+                $cant = $proc['cantidad'];
+
+                // Crear detalle en el nuevo pedido
+                PedidoDetalle::create([
+                    'pedido_id' => $pedidoNuevo->id,
+                    'producto_id' => $det->producto_id,
+                    'cantidad' => $cant,
+                    'precio_unitario' => $det->precio_unitario,
+                    'estado_comanda' => 'impreso',
+                ]);
+
+                // Descontar del original
+                if ($cant === $det->cantidad) {
+                    $det->delete();
+                } else {
+                    $det->decrement('cantidad', $cant);
+                }
+            }
+
+            // 3. Recalcular total del pedido original
+            $totalRestante = PedidoDetalle::where('pedido_id', $pedidoOriginal->id)
+                ->selectRaw('SUM(cantidad * precio_unitario) as total')
+                ->value('total');
+
+            if (!$totalRestante || $totalRestante <= 0) {
+                // Si ya no queda nada, marcamos el original como pagado y liberamos mesa
+                $pedidoOriginal->update(['estado' => 'pagado', 'total' => 0]);
+                $pedidoOriginal->mesa->update(['estado' => 'libre']);
+                // Eliminar el pedido original vacío para no ensuciar reportes
+                $pedidoOriginal->delete();
+            } else {
+                $pedidoOriginal->update(['total' => $totalRestante]);
+            }
+
+            // 4. Crear la factura para el pedido dividido
+            $f = Factura::create([
+                'pedido_id' => $pedidoNuevo->id,
+                'cajero_id' => auth()->id(),
+                'cliente_nombre' => $request->cliente_nombre,
+                'cliente_nit_ci' => $request->cliente_nit_ci,
+                'monto_pagado' => $montoFinal,
+                'descuento' => 0,
+                'recargo' => 0,
+                'efectivo_recibido' => $request->monto_pagado,
+                'metodo_pago' => $request->metodo_pago,
+            ]);
+
+            return $f;
+        });
+
+        $pedidoOriginalExiste = Pedido::find($pedido_id);
+
+        if ($pedidoOriginalExiste) {
+            return redirect()->route('cajero.cobrar', $pedidoOriginalExiste->id)
+                ->with('success', "✅ Parte dividida cobrada con éxito. Aún queda saldo pendiente por cobrar.");
+        }
+
+        return redirect()->route('cajero.factura', $factura->id)
+            ->with('success', "✅ Cuenta dividida y pago procesado correctamente (Mesa totalmente cobrada y liberada).");
     }
 }

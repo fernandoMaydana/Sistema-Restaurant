@@ -48,5 +48,38 @@ class LoginController extends Controller
                 'email' => 'Tu cuenta ha sido deshabilitada. Contacta al administrador.'
             ]);
         }
+
+        // Registrar inicio de sesión para meseros y cajeros
+        if (in_array($user->role, ['mesero', 'cajero'])) {
+            \App\Models\SesionTrabajo::create([
+                'user_id' => $user->id,
+                'fecha_entrada' => now(),
+            ]);
+        }
+    }
+
+    public function logout(Request $request)
+    {
+        $user = Auth::user();
+        if ($user && in_array($user->role, ['mesero', 'cajero'])) {
+            // Buscar la última sesión de trabajo abierta para este usuario
+            $ultimaSesion = \App\Models\SesionTrabajo::where('user_id', $user->id)
+                ->whereNull('fecha_salida')
+                ->latest()
+                ->first();
+            if ($ultimaSesion) {
+                $ultimaSesion->update([
+                    'fecha_salida' => now()
+                ]);
+            }
+        }
+
+        $this->guard()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return $request->wantsJson()
+            ? new \Illuminate\Http\JsonResponse([], 204)
+            : redirect('/');
     }
 }

@@ -9,27 +9,32 @@
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active fw-bold' : '' }}" href="{{ route('admin.dashboard') }}">
-                            <i class="bi bi-speedometer2 me-2"></i> Dashboard
+                            <i class="bi bi-speedometer2 text-secondary me-2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.stock.index') ? 'active fw-bold' : '' }}" href="{{ route('admin.stock.index') }}">
+                            <i class="bi bi-box-seam text-secondary me-2"></i> Control de Stock
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.usuarios.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.usuarios.index') }}">
-                            <i class="bi bi-people me-2"></i> Usuarios
+                            <i class="bi bi-people text-primary me-2"></i> Usuarios
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.mesas.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.mesas.index') }}">
-                            <i class="bi bi-grid me-2"></i> Mesas
+                            <i class="bi bi-grid text-success me-2"></i> Mesas
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.categorias.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.categorias.index') }}">
-                            <i class="bi bi-tags me-2"></i> Categorías
+                            <i class="bi bi-tags text-warning me-2"></i> Categorías
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.productos.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.productos.index') }}">
-                            <i class="bi bi-box me-2"></i> Productos
+                            <i class="bi bi-box text-info me-2"></i> Productos
                         </a>
                     </li>
                     <li class="nav-item mt-3">
@@ -37,12 +42,37 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.ventas.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.ventas.index') }}">
-                            <i class="bi bi-receipt me-2"></i> Historial de Ventas
+                            <i class="bi bi-receipt text-success me-2"></i> Historial de Ventas
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.cajas.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.cajas.index') }}">
-                            <i class="bi bi-clock-history me-2"></i> Historial Cajas
+                            <i class="bi bi-clock-history text-secondary me-2"></i> Historial Cajas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.reportes.graficos') ? 'active fw-bold' : '' }}" href="{{ route('admin.reportes.graficos') }}">
+                            <i class="bi bi-bar-chart-line text-primary me-2"></i> Gráficos e Históricos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.reportes.rentabilidad') ? 'active fw-bold' : '' }}" href="{{ route('admin.reportes.rentabilidad') }}">
+                            <i class="bi bi-cash-coin text-success me-2"></i> Rentabilidad y Utilidades
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.reportes.productos_vendidos') ? 'active fw-bold' : '' }}" href="{{ route('admin.reportes.productos_vendidos') }}">
+                            <i class="bi bi-trophy text-warning me-2"></i> Productos Más Vendidos
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.reportes.meseros') ? 'active fw-bold' : '' }}" href="{{ route('admin.reportes.meseros') }}">
+                            <i class="bi bi-person-badge text-info me-2"></i> Rendimiento Meseros
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.reportes.stock_critico') ? 'active fw-bold' : '' }}" href="{{ route('admin.reportes.stock_critico') }}">
+                            <i class="bi bi-exclamation-triangle text-danger me-2"></i> Stock Crítico
                         </a>
                     </li>
                 </ul>

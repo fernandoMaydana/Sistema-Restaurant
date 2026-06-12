@@ -15,11 +15,11 @@
             </span>
         </div>
         <div class="d-flex justify-content-between mb-2 fs-6">
-            <span class="text-muted">Total de la Cuenta:</span>
+            <span class="text-muted">Total a Pagar:</span>
             <strong class="text-dark">Bs {{ number_format($factura->monto_pagado, 2) }}</strong>
         </div>
         <div class="d-flex justify-content-between mb-2 fs-6">
-            <span class="text-muted">Efectivo Recibido ({{ ucfirst($factura->metodo_pago) }}):</span>
+            <span class="text-muted">Monto Recibido ({{ ucfirst($factura->metodo_pago) }}):</span>
             <strong class="text-dark">Bs {{ number_format($factura->efectivo_recibido ?? $factura->monto_pagado, 2) }}</strong>
         </div>
         <hr class="my-2 opacity-10">
@@ -66,14 +66,24 @@
                     btn.disabled = false;
                 }, 2000);
             } else {
-                alert("Error de Impresora:\n" + data.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Impresora',
+                    text: data.message,
+                    confirmButtonColor: '#e63946'
+                });
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         })
         .catch(e => {
             console.error("Error de red.", e);
-            alert("Error de red al intentar imprimir.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Red',
+                text: 'Hubo un error de red al intentar comunicarse con la ticketera.',
+                confirmButtonColor: '#e63946'
+            });
             btn.innerHTML = originalText;
             btn.disabled = false;
         });

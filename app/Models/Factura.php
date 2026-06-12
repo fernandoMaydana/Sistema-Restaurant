@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Factura extends Model
 {
-    protected $fillable = ['pedido_id', 'cajero_id', 'cliente_nombre', 'cliente_nit_ci', 'monto_pagado', 'metodo_pago', 'efectivo_recibido', 'estado'];
+    protected $fillable = ['pedido_id', 'cajero_id', 'cliente_nombre', 'cliente_nit_ci', 'monto_pagado', 'descuento', 'recargo', 'metodo_pago', 'efectivo_recibido', 'estado'];
 
     public function pedido()
     {

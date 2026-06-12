@@ -59,8 +59,14 @@
                 </div>
             </div>
 
+            <!-- Precio 2 Toggle -->
+            <div class="mb-3 form-check form-switch p-3 border rounded bg-light-subtle">
+                <input type="checkbox" class="form-check-input ms-0" id="toggle_precio_2" name="toggle_precio_2" value="1" {{ old('toggle_precio_2') ? 'checked' : '' }} onchange="togglePrecioFields(2)">
+                <label class="form-check-label fw-bold ms-2" for="toggle_precio_2">Habilitar Precio Secundario (Precio 2)</label>
+            </div>
+
             <!-- Precio 2 -->
-            <div class="row mb-3 align-items-end p-3 border rounded">
+            <div id="container_precio_2" class="row mb-3 align-items-end p-3 border rounded" style="display: none;">
                 <div class="col-md-2">
                     <label class="small fw-bold text-muted">Costo (P2)</label>
                     <div class="input-group">
@@ -73,7 +79,7 @@
                     <input type="text" name="precio_2_nombre" class="form-control" placeholder="Ej: Mediana" value="{{ old('precio_2_nombre') }}">
                 </div>
                 <div class="col-md-3">
-                    <label class="small fw-bold text-muted">Precio 2 (Opc.)</label>
+                    <label class="small fw-bold text-muted">Precio 2</label>
                     <div class="input-group">
                         <span class="input-group-text text-muted">Bs</span>
                         <input type="text" inputmode="decimal" name="precio_2" id="precio_2" class="form-control" value="{{ old('precio_2') }}" oninput="calcularGanancia(2)">
@@ -88,8 +94,14 @@
                 </div>
             </div>
 
+            <!-- Precio 3 Toggle -->
+            <div class="mb-3 form-check form-switch p-3 border rounded bg-light-subtle">
+                <input type="checkbox" class="form-check-input ms-0" id="toggle_precio_3" name="toggle_precio_3" value="1" {{ old('toggle_precio_3') ? 'checked' : '' }} onchange="togglePrecioFields(3)">
+                <label class="form-check-label fw-bold ms-2" for="toggle_precio_3">Habilitar Tercer Precio (Precio 3)</label>
+            </div>
+
             <!-- Precio 3 -->
-            <div class="row mb-4 align-items-end p-3 border rounded">
+            <div id="container_precio_3" class="row mb-4 align-items-end p-3 border rounded" style="display: none;">
                 <div class="col-md-2">
                     <label class="small fw-bold text-muted">Costo (P3)</label>
                     <div class="input-group">
@@ -102,7 +114,7 @@
                     <input type="text" name="precio_3_nombre" class="form-control" placeholder="Ej: Familiar" value="{{ old('precio_3_nombre') }}">
                 </div>
                 <div class="col-md-3">
-                    <label class="small fw-bold text-muted">Precio 3 (Opc.)</label>
+                    <label class="small fw-bold text-muted">Precio 3</label>
                     <div class="input-group">
                         <span class="input-group-text text-muted">Bs</span>
                         <input type="text" inputmode="decimal" name="precio_3" id="precio_3" class="form-control" value="{{ old('precio_3') }}" oninput="calcularGanancia(3)">
@@ -189,11 +201,41 @@
         }
     }
 
+    function togglePrecioFields(nivel) {
+        var isChecked = document.getElementById('toggle_precio_' + nivel).checked;
+        var container = document.getElementById('container_precio_' + nivel);
+        
+        if (isChecked) {
+            container.style.display = 'flex';
+            container.querySelectorAll('input').forEach(function(el) {
+                el.disabled = false;
+            });
+        } else {
+            container.style.display = 'none';
+            container.querySelectorAll('input').forEach(function(el) {
+                el.disabled = true;
+                if(el.type === 'text' || el.type === 'number') {
+                    if (el.id.startsWith('costo_')) {
+                        el.value = '0';
+                    } else {
+                        el.value = '';
+                    }
+                }
+            });
+            var elNeta = document.getElementById('ganancia_neta_' + nivel);
+            var elMargen = document.getElementById('ganancia_margen_' + nivel);
+            if (elNeta) elNeta.textContent = 'Bs0.00';
+            if (elMargen) elMargen.textContent = '0%';
+        }
+    }
+
     // Inicializar valores al cargar
     toggleStockField();
     calcularGanancia(1);
     calcularGanancia(2);
     calcularGanancia(3);
+    togglePrecioFields(2);
+    togglePrecioFields(3);
     
     // Antes de enviar el formulario, cambiar comas por puntos para que Laravel lo procese correctamente
     var form = document.querySelector('form');

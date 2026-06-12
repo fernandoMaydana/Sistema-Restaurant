@@ -68,6 +68,7 @@ class PedidoController extends Controller
             'items.*.producto_id'          => 'required|exists:productos,id',
             'items.*.cantidad'             => 'required|integer|min:1',
             'items.*.precio_seleccionado'  => 'required|numeric|min:0',
+            'items.*.notas'                => 'nullable|string|max:255',
         ]);
 
         $mesa = Mesa::findOrFail($mesa_id);
@@ -105,6 +106,7 @@ class PedidoController extends Controller
                     'cantidad'        => $item['cantidad'],
                     'precio_unitario' => $item['precio_seleccionado'],
                     'estado_comanda'  => 'pendiente',
+                    'notas'           => $item['notas'] ?? null,
                 ]);
             }
 

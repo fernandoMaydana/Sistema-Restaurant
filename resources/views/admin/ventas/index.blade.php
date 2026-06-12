@@ -20,25 +20,29 @@
     </div>
     <div class="card-body">
         <form action="{{ route('admin.ventas.index') }}" method="GET" class="row g-3">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-bold">Desde</label>
                 <input type="date" name="fecha_desde" class="form-control" value="{{ request('fecha_desde') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <label class="form-label small fw-bold">Hasta</label>
                 <input type="date" name="fecha_hasta" class="form-control" value="{{ request('fecha_hasta') }}">
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
+                <label class="form-label small fw-bold text-primary"><i class="bi bi-calendar-event me-1"></i>Día Específico</label>
+                <input type="date" name="fecha_especifica" class="form-control border-primary" value="{{ request('fecha_especifica') }}">
+            </div>
+            <div class="col-md-2">
                 <label class="form-label small fw-bold">Cajero</label>
                 <select name="cajero_id" class="form-select">
-                    <option value="">Todos los cajeros</option>
+                    <option value="">Todos</option>
                     @foreach($cajeros as $cajero)
                         <option value="{{ $cajero->id }}" {{ request('cajero_id') == $cajero->id ? 'selected' : '' }}>{{ $cajero->name }}</option>
                     @endforeach
                 </select>
             </div>
             <div class="col-md-2">
-                <label class="form-label small fw-bold">Método de Pago</label>
+                <label class="form-label small fw-bold">Método</label>
                 <select name="metodo_pago" class="form-select">
                     <option value="">Todos</option>
                     <option value="efectivo" {{ request('metodo_pago') == 'efectivo' ? 'selected' : '' }}>Efectivo</option>
@@ -47,8 +51,8 @@
                     <option value="qr" {{ request('metodo_pago') == 'qr' ? 'selected' : '' }}>QR</option>
                 </select>
             </div>
-            <div class="col-md-1 d-flex align-items-end">
-                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search"></i></button>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100"><i class="bi bi-search me-1"></i>Buscar</button>
             </div>
         </form>
     </div>
@@ -72,7 +76,7 @@
                 </thead>
                 <tbody>
                     @forelse($facturas as $factura)
-                        <tr>
+                        <tr class="{{ $factura->estado === 'anulada' ? 'table-danger opacity-75' : '' }}">
                             <td>#{{ str_pad($factura->id, 5, '0', STR_PAD_LEFT) }}</td>
                             <td>{{ $factura->created_at->format('d/m/Y H:i') }}</td>
                             <td>Mesa {{ $factura->pedido->mesa->numero ?? 'N/A' }}</td>
@@ -93,7 +97,7 @@
                                     <span class="badge bg-danger">Anulada</span>
                                 @endif
                             </td>
-                            <td class="fw-bold text-success">Bs {{ number_format($factura->monto_pagado, 2) }}</td>
+                            <td class="fw-bold {{ $factura->estado === 'activa' ? 'text-success' : 'text-decoration-line-through text-muted' }}">Bs {{ number_format($factura->monto_pagado, 2) }}</td>
                         </tr>
                     @empty
                         <tr>

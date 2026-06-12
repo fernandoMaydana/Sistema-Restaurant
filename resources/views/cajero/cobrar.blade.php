@@ -5,9 +5,14 @@
 
     <div class="row align-items-center mb-4 pb-2 border-bottom">
         <div class="col-md-6">
-            <a href="{{ route('cajero.salon') }}" class="btn btn-outline-secondary btn-sm me-3">
-                <i class="bi bi-arrow-left"></i> Volver al Salón
-            </a>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <a href="{{ route('cajero.salon') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-arrow-left"></i> Volver al Salón
+                </a>
+                <a href="{{ route('cajero.pedidos.dividir', $pedido->id) }}" class="btn btn-outline-warning btn-sm fw-bold">
+                    <i class="bi bi-scissors me-2"></i>Dividir Cuenta
+                </a>
+            </div>
             <span class="h2 fw-bold mb-0">
                 <i class="bi bi-credit-card me-2 text-primary"></i>
                 Procesar Pago — 
@@ -21,7 +26,7 @@
         <div class="col-md-6 text-md-end">
             <div class="bg-primary-subtle text-primary px-4 py-2 rounded-4 d-inline-block">
                 <span class="fs-5 fw-bold">TOTAL A COBRAR:</span>
-                <span class="fs-2 fw-black ms-2">Bs {{ number_format($pedido->total, 2) }}</span>
+                <span class="fs-2 fw-black ms-2" id="header-total-display">Bs {{ number_format($pedido->total, 2) }}</span>
             </div>
         </div>
     </div>
@@ -54,10 +59,13 @@
                     </div>
                 </div>
                 <div class="card-footer bg-light p-4">
-                    <div class="d-flex justify-content-between align-items-center">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <span class="h4 mb-0 fw-bold">SUBTOTAL:</span>
                         <span class="h3 mb-0 fw-bold text-primary">Bs {{ number_format($pedido->total, 2) }}</span>
                     </div>
+                    <a href="{{ route('cajero.pedidos.dividir', $pedido->id) }}" class="btn btn-outline-warning w-100 py-2 fw-bold rounded-3">
+                        <i class="bi bi-scissors me-2"></i>Dividir Cuenta / Pago Parcial
+                    </a>
                 </div>
             </div>
         </div>
@@ -69,7 +77,11 @@
                     <i class="bi bi-cash-coin me-2"></i>Finalizar Transacción
                 </div>
                 <div class="card-body p-5">
-                    <form action="{{ route('cajero.cobrar.pagar', $pedido->id) }}" method="POST">
+                    <form action="{{ route('cajero.cobrar.pagar', $pedido->id) }}" method="POST" class="swal-confirm-form"
+                          data-swal-title="¿Confirmar Pago?"
+                          data-swal-message="¿Confirmar pago y liberar {{ $pedido->mesa->es_para_llevar ? 'Llevar #' : 'Mesa ' }}{{ $pedido->mesa->numero }}?"
+                          data-swal-icon="success"
+                          data-swal-confirm-text="Sí, procesar cobro">
                         @csrf
 
                         <div class="row g-4">
@@ -105,7 +117,7 @@
                             <div class="col-md-7 mt-5">
                                 <label class="form-label fs-4 fw-bold text-primary">Efectivo Recibido</label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-primary text-white border-0 fs-3 fw-bold">$</span>
+                                    <span class="input-group-text bg-primary text-white border-0 fs-3 fw-bold">Bs</span>
                                     <input type="number" step="0.01" min="{{ $pedido->total }}"
                                            name="monto_pagado" id="monto_pagado" class="form-control form-control-lg border-primary border-2 fs-1 fw-black"
                                            value="{{ old('monto_pagado', number_format($pedido->total, 2, '.', '')) }}"
@@ -121,8 +133,7 @@
                             </div>
 
                             <div class="col-12 mt-5">
-                                <button type="submit" class="btn btn-primary w-100 py-4 fs-3 fw-black rounded-4 shadow"
-                                        onclick="return confirm('¿Confirmar pago y liberar {{ $pedido->mesa->es_para_llevar ? 'Llevar #' : 'Mesa ' }}{{ $pedido->mesa->numero }}?')">
+                                <button type="submit" class="btn btn-primary w-100 py-4 fs-3 fw-black rounded-4 shadow">
                                     <i class="bi bi-check2-circle me-3"></i>
                                     PROCESAR COBRO · LIBERAR MESA
                                 </button>
@@ -138,12 +149,11 @@
 </div>
 
 <script>
-const total = {{ $pedido->total }};
-
 function calcCambio() {
-    const monto = parseFloat(document.getElementById('monto_pagado').value) || 0;
-    const cambio = Math.max(0, monto - total);
-    document.getElementById('cambio-display').textContent = '$' + cambio.toFixed(2);
+    const totalOriginal = {{ $pedido->total }};
+    const montoRecibido = parseFloat(document.getElementById('monto_pagado').value) || 0;
+    const cambio = Math.max(0, montoRecibido - totalOriginal);
+    document.getElementById('cambio-display').textContent = 'Bs ' + cambio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 // Calcular al cargar

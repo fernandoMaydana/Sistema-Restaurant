@@ -71,6 +71,29 @@
         </div>
     @endif
 
+    {{-- WIDGET DE ESTADO DE LA IMPRESORA --}}
+    <div class="card border-0 shadow-sm rounded-4 mb-4" id="printer-status-widget" style="background-color: #f8f9fa;">
+        <div class="card-body py-3 px-4 d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-white p-2 rounded-3 shadow-sm d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                    <i class="bi bi-printer text-muted fs-4" id="printer-icon"></i>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-dark">Estado de Ticketera Fïsica</h6>
+                    <span id="printer-status-text" class="text-muted small">
+                        <span class="spinner-border spinner-border-sm text-secondary me-1" role="status"></span>
+                        Verificando conexión...
+                    </span>
+                </div>
+            </div>
+            <div>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 fw-bold" onclick="verificarTicketera()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Recomprobar
+                </button>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-6 mb-4">
              <div class="card shadow-sm border-0 h-100">
@@ -151,7 +174,11 @@
                                         </td>
                                         <td class="text-end pe-3">
                                             @if($factura->estado === 'activa')
-                                                <form action="{{ route('cajero.factura.anular', $factura->id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Estás seguro de que deseas ANULAR esta venta? Se descontará de la caja y reportes de hoy.')">
+                                                <form action="{{ route('cajero.factura.anular', $factura->id) }}" method="POST" class="d-inline swal-confirm-form"
+                                                      data-swal-title="¿Anular Venta?"
+                                                      data-swal-message="¿Estás seguro de que deseas ANULAR esta venta? Se descontará de la caja y reportes de hoy."
+                                                      data-swal-icon="danger"
+                                                      data-swal-confirm-text="Sí, anular venta">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 me-1">
                                                         <i class="bi bi-x-circle me-1"></i>Anular Venta
@@ -183,6 +210,33 @@
 </div>
 
 <script>
+    function verificarTicketera() {
+        const textSpan = document.getElementById('printer-status-text');
+        const icon = document.getElementById('printer-icon');
+        
+        textSpan.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary me-1" role="status"></span>Verificando conexión...';
+        icon.className = 'bi bi-printer text-muted fs-4';
+        
+        fetch('{{ route('cajero.api.check-printer') }}')
+        .then(r => r.json())
+        .then(data => {
+            if (data.connected) {
+                textSpan.innerHTML = `<span class="text-success fw-bold">🟢 Conectada</span> (Impresora: ${data.printer_name})`;
+                icon.className = 'bi bi-printer-fill text-success fs-4';
+            } else {
+                textSpan.innerHTML = `<span class="text-danger fw-bold">🔴 Error de Conexión</span> (Impresora: ${data.printer_name}). Asegúrate de que esté encendida, conectada y compartida.`;
+                icon.className = 'bi bi-printer-fill text-danger fs-4';
+            }
+        })
+        .catch(e => {
+            textSpan.innerHTML = '<span class="text-warning fw-bold">⚠️ No se pudo comprobar</span> (Error de red)';
+            icon.className = 'bi bi-printer text-warning fs-4';
+        });
+    }
+
+    // Comprobar al cargar
+    document.addEventListener('DOMContentLoaded', verificarTicketera);
+
     function imprimirFacturaDirecta(event, url) {
         event.preventDefault();
         const btn = event.currentTarget;
@@ -211,14 +265,24 @@
                     btn.disabled = false;
                 }, 2000);
             } else {
-                alert("Error de Impresora:\n" + data.message);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Impresora',
+                    text: data.message,
+                    confirmButtonColor: '#e63946'
+                });
                 btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         })
         .catch(e => {
             console.error("Error de red.", e);
-            alert("Error de conexión al intentar imprimir.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Conexión',
+                text: 'Hubo un error de red al intentar comunicarse con el servidor.',
+                confirmButtonColor: '#e63946'
+            });
             btn.innerHTML = originalText;
             btn.disabled = false;
         });
@@ -239,7 +303,7 @@
                     <div class="mb-4">
                         <label class="form-label fw-bold">Monto del Gasto</label>
                         <div class="input-group">
-                            <span class="input-group-text bg-light">$</span>
+                            <span class="input-group-text bg-light">Bs</span>
                             <input type="number" step="0.01" min="0.01" name="monto" class="form-control form-control-lg" required placeholder="0.00">
                         </div>
                     </div>

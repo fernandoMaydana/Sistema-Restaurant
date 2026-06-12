@@ -187,7 +187,11 @@
                                 <a href="{{ route('cajero.cobrar', $pedidoActivo->id) }}" class="btn btn-warning w-100 py-3 fw-bold text-white fs-5 rounded-4 shadow-sm">
                                     <i class="bi bi-credit-card me-2"></i> COBRAR
                                 </a>
-                                <form action="{{ route('cajero.pedido.anular', $pedidoActivo->id) }}" method="POST" class="mt-2" onsubmit="return confirm('⚠️ ¿Estás seguro de ANULAR y BORRAR este pedido por completo? Esta acción devolverá los productos al inventario y liberará la mesa.')">
+                                <form action="{{ route('cajero.pedido.anular', $pedidoActivo->id) }}" method="POST" class="mt-2 swal-confirm-form"
+                                      data-swal-title="¿Anular Pedido?"
+                                      data-swal-message="¿Estás seguro de ANULAR y BORRAR este pedido por completo? Esta acción devolverá los productos al inventario y liberará la mesa."
+                                      data-swal-icon="warning"
+                                      data-swal-confirm-text="Sí, anular pedido">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-danger w-100 py-2 fw-bold rounded-4 shadow-sm">
@@ -300,11 +304,21 @@
                     else btn.classList.add('btn-outline-dark');
                 }, 1500);
             } else {
-                alert("❌ Error de Impresora:\n" + data.message + "\n\nAsegúrate de que la impresora esté compartida en Windows como '" + '{{ env('PRINTER_NAME', 'EPSON_TM') }}' + "'.");
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Impresora',
+                    text: data.message,
+                    confirmButtonColor: '#e63946'
+                });
             }
         })
         .catch(e => {
-            alert("Error de red al intentar imprimir.");
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Red',
+                text: 'Hubo un error de red al intentar comunicarse con la ticketera.',
+                confirmButtonColor: '#e63946'
+            });
             console.error(e);
         })
         .finally(() => {

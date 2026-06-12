@@ -15,13 +15,35 @@ class CajaController extends Controller
     /**
      * Lista todas las sesiones de caja (historial).
      */
-    public function index()
+    public function index(Request $request)
     {
-        $cajas = CajaSesion::with('user')
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
-            
-        return view('admin.cajas.index', compact('cajas'));
+        $query = CajaSesion::with('user')->orderBy('created_at', 'desc');
+
+        // Filtros
+        if ($request->filled('fecha_especifica')) {
+            $query->whereDate('fecha_apertura', $request->fecha_especifica);
+        } else {
+            if ($request->filled('fecha_desde')) {
+                $query->whereDate('fecha_apertura', '>=', $request->fecha_desde);
+            }
+            if ($request->filled('fecha_hasta')) {
+                $query->whereDate('fecha_apertura', '<=', $request->fecha_hasta);
+            }
+        }
+
+        if ($request->filled('cajero_id')) {
+            $query->where('user_id', $request->cajero_id);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        $cajas = $query->paginate(15)->withQueryString();
+        
+        $cajeros = \App\Models\User::where('role', 'cajero')->get();
+
+        return view('admin.cajas.index', compact('cajas', 'cajeros'));
     }
 
     /**
@@ -155,39 +177,39 @@ class CajaController extends Controller
             $printer->text("Fecha: " . \Carbon\Carbon::parse($caja->fecha_cierre ?? now())->format('d/m/Y H:i') . "\n");
             $printer->text("--------------------------------\n\n");
 
-            $printer->text("Monto Inicial:     $" . number_format($caja->monto_inicial, 2) . "\n");
-            $printer->text("Ventas Totales:    $" . number_format($totalVentas, 2) . "\n");
-            $printer->text("--------------------------------\n");
-            $printer->text("Ventas Efectivo:   $" . number_format($ventasPorMetodo['efectivo'], 2) . "\n");
-            $printer->text("Ventas QR/Trans:   $" . number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) . "\n");
-            $printer->text("Ventas Tarjeta:    $" . number_format($ventasPorMetodo['tarjeta'], 2) . "\n");
-            
-            if ($gastos->count() > 0) {
-                $printer->text("--------------------------------\n");
-                $printer->setEmphasis(true);
-                $printer->text("GASTOS (-)\n");
-                $printer->setEmphasis(false);
-                foreach ($gastos as $gasto) {
-                    $desc = substr($gasto->descripcion, 0, 20);
-                    $monto = "-$" . number_format($gasto->monto, 2);
-                    $espacios = max(1, 32 - strlen($desc) - strlen($monto));
-                    $printer->text($desc . str_repeat(" ", $espacios) . $monto . "\n");
-                }
-                $txtTotalG = "TOTAL GASTOS:";
-                $montoTotalG = "-$" . number_format($totalGastos, 2);
-                $esp = max(1, 32 - strlen($txtTotalG) - strlen($montoTotalG));
-                $printer->setEmphasis(true);
-                $printer->text($txtTotalG . str_repeat(" ", $esp) . $montoTotalG . "\n");
-                $printer->setEmphasis(false);
-            }
-
-            $printer->text("--------------------------------\n");
-            $printer->setTextSize(1, 2);
-            $txtEfectivo = "EFECTIVO CAJA:";
-            $montoEfectivo = "$" . number_format($caja->monto_final, 2);
-            $esp = max(1, 32 - strlen($txtEfectivo) - strlen($montoEfectivo));
-            $printer->text($txtEfectivo . str_repeat(" ", $esp) . $montoEfectivo . "\n");
-            $printer->setTextSize(1, 1);
+             $printer->text("Monto Inicial:     Bs " . number_format($caja->monto_inicial, 2) . "\n");
+             $printer->text("Ventas Totales:    Bs " . number_format($totalVentas, 2) . "\n");
+             $printer->text("--------------------------------\n");
+             $printer->text("Ventas Efectivo:   Bs " . number_format($ventasPorMetodo['efectivo'], 2) . "\n");
+             $printer->text("Ventas QR/Trans:   Bs " . number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) . "\n");
+             $printer->text("Ventas Tarjeta:    Bs " . number_format($ventasPorMetodo['tarjeta'], 2) . "\n");
+             
+             if ($gastos->count() > 0) {
+                 $printer->text("--------------------------------\n");
+                 $printer->setEmphasis(true);
+                 $printer->text("GASTOS (-)\n");
+                 $printer->setEmphasis(false);
+                 foreach ($gastos as $gasto) {
+                     $desc = substr($gasto->descripcion, 0, 20);
+                     $monto = "-Bs " . number_format($gasto->monto, 2);
+                     $espacios = max(1, 32 - strlen($desc) - strlen($monto));
+                     $printer->text($desc . str_repeat(" ", $espacios) . $monto . "\n");
+                 }
+                 $txtTotalG = "TOTAL GASTOS:";
+                 $montoTotalG = "-Bs " . number_format($totalGastos, 2);
+                 $esp = max(1, 32 - strlen($txtTotalG) - strlen($montoTotalG));
+                 $printer->setEmphasis(true);
+                 $printer->text($txtTotalG . str_repeat(" ", $esp) . $montoTotalG . "\n");
+                 $printer->setEmphasis(false);
+             }
+ 
+             $printer->text("--------------------------------\n");
+             $printer->setTextSize(1, 2);
+             $txtEfectivo = "EFECTIVO CAJA:";
+             $montoEfectivo = "Bs " . number_format($caja->monto_final, 2);
+             $esp = max(1, 32 - strlen($txtEfectivo) - strlen($montoEfectivo));
+             $printer->text($txtEfectivo . str_repeat(" ", $esp) . $montoEfectivo . "\n");
+             $printer->setTextSize(1, 1);
             
             $printer->text("\n--------------------------------\n");
             $printer->setJustification(Printer::JUSTIFY_CENTER);

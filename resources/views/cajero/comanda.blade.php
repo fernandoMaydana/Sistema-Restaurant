@@ -14,7 +14,6 @@
 <div class="ticket-container">
     <div class="thermal-ticket">
         <div class="text-center font-monospace">
-            <h3 style="margin: 0; font-size: 12pt;">COMANDA DE COCINA</h3>
             @if($pedido->mesa->es_para_llevar)
                 <h2 style="font-size: 24pt; margin: 5px 0; font-weight: bold; background: #000; color: #fff; padding: 5px;">* PARA LLEVAR *</h2>
                 <h1 style="font-size: 36pt; margin: 5px 0; font-weight: bold;">PEDIDO {{ $pedido->mesa->numero }}</h1>
@@ -22,7 +21,7 @@
                 <h1 style="font-size: 32pt; margin: 5px 0; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h1>
             @endif
             
-            <p style="font-size: 9pt; line-height: 1.2; margin: 5px 0;">
+            <p style="font-size: 8pt; line-height: 1.2; margin: 5px 0; opacity: 0.85;">
                 ------------------------<br>
                 Mesero: {{ strtoupper($pedido->mesero->name) }}<br>
                 Fecha: {{ now()->format('d/m/Y H:i') }}<br>
@@ -31,9 +30,16 @@
 
             <div style="text-align: left; font-size: 11pt;">
                 @forelse($pedido->detalles as $det)
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 5px; border-bottom: 1px dashed #eee; padding-bottom: 3px;">
-                        <span style="font-weight: bold; width: 80%;">{{ strtoupper($det->nombre_mostrar) }}</span>
-                        <span style="font-weight: 900; width: 20%; text-align: right;">x{{ $det->cantidad }}</span>
+                    <div style="margin-bottom: 6px; border-bottom: 1px dashed #eee; padding-bottom: 4px;">
+                        <div style="display: flex; align-items: flex-start; font-size: 12pt;">
+                            <span style="font-weight: 900; margin-right: 12px; min-width: 22px;">{{ $det->cantidad }}</span>
+                            <span style="font-weight: bold; flex-grow: 1;">{{ strtoupper($det->nombre_mostrar) }}</span>
+                        </div>
+                        @if($det->notas)
+                            <div style="font-size: 9.5pt; color: #333; font-style: italic; margin-top: 2px; font-weight: bold; padding-left: 34px;">
+                                * NOTA: {{ strtoupper($det->notas) }}
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <p style="text-align: center; color: #666;">SIN ÍTEMS PENDIENTES</p>

@@ -161,67 +161,70 @@
                         🧾 Detalle Mesa {{ $mesa->numero }}
                     @endif
                 </h5>
-                <span class="text-muted" style="font-size: 0.85rem;">Pedido actual registrado</span>
+                <span class="text-muted" style="font-size: 0.85rem;">Pedido actual de la mesa</span>
             </div>
             <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
         </div>
         <div class="offcanvas-body p-0 overflow-auto">
-            @if($pedido && $pedido->detalles->count() > 0)
-                <ul class="list-group list-group-flush">
-                    @foreach($pedido->detalles as $det)
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-3">
-                            <div class="d-flex flex-column">
-                                <span class="fw-bold" style="font-size: 0.95rem;">{{ $det->nombre_mostrar }}</span>
-                                <div class="d-flex align-items-center gap-2 mt-1">
-                                    <span class="text-muted" style="font-size: 0.85rem;">Bs {{ number_format($det->precio_unitario, 2) }}</span>
-                                    @if($det->estado_comanda === 'pendiente')
-                                        <span class="badge bg-warning text-dark" style="font-size:0.65rem">Pendiente</span>
-                                    @else
-                                        <span class="badge bg-success" style="font-size:0.65rem">En cocina</span>
-                                    @endif
+            {{-- Items registrados en base de datos --}}
+            <div id="db-items-container">
+                @if($pedido && $pedido->detalles->count() > 0)
+                    <ul class="list-group list-group-flush border-bottom">
+                        @foreach($pedido->detalles as $det)
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-3">
+                                <div class="d-flex flex-column">
+                                    <span class="fw-bold" style="font-size: 0.95rem;">{{ $det->nombre_mostrar }}</span>
+                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                        <span class="text-muted" style="font-size: 0.85rem;">Bs {{ number_format($det->precio_unitario, 2) }}</span>
+                                        @if($det->estado_comanda === 'pendiente')
+                                            <span class="badge bg-warning text-dark" style="font-size:0.65rem">Pendiente</span>
+                                        @else
+                                            <span class="badge bg-success" style="font-size:0.65rem">En cocina</span>
+                                        @endif
+                                    </div>
                                 </div>
-                            </div>
                                 <div class="text-end d-flex flex-column align-items-end">
                                     <span class="badge bg-light text-dark border">x{{ $det->cantidad }}</span>
                                     <strong class="mt-1 text-success mb-1" style="font-size: 0.95rem;">
                                         Bs {{ number_format($det->cantidad * $det->precio_unitario, 2) }}
                                     </strong>
-                                    @if(Auth::user()->role === 'cajero')
-                                        <form action="{{ route('cajero.pedido.eliminar_item', $det->id) }}" method="POST" onsubmit="return confirm('¿Eliminar este producto de la cuenta?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-outline-danger btn-sm p-0 d-flex align-items-center justify-content-center mt-1" style="width: 28px; height: 28px; border-radius: 6px;">
-                                                <i class="bi bi-trash" style="font-size: 0.9rem;"></i>
-                                            </button>
-                                        </form>
-                                    @endif
                                 </div>
-                        </li>
-                    @endforeach
-                </ul>
-            @else
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="bi bi-cart-x text-muted" style="font-size: 3rem;"></i>
-                    </div>
-                    <p class="text-muted fw-bold">No hay ítems registrados aún.</p>
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+
+            {{-- Items seleccionados en pantalla (por agregar) --}}
+            <div class="p-3" id="new-items-offcanvas-section" style="display: none;">
+                <small class="text-muted d-block mb-2 fw-bold text-uppercase" id="new-items-offcanvas-title">Productos por agregar</small>
+                <div id="new-items-offcanvas-list">
+                    {{-- Llenado vía JS --}}
                 </div>
-            @endif
+            </div>
+
+            <div class="text-center py-5" id="empty-pedido-msg" style="display: {{ ($pedido && $pedido->detalles->count() > 0) ? 'none' : 'block' }};">
+                <div class="mb-3">
+                    <i class="bi bi-cart-x text-muted" style="font-size: 3rem;"></i>
+                </div>
+                <p class="text-muted fw-bold">No hay ítems seleccionados ni registrados aún.</p>
+            </div>
         </div>
-        @if($pedido)
+        
         <div class="offcanvas-footer p-3 border-top bg-light">
             <div class="d-flex justify-content-between align-items-center fw-bold fs-5 mb-3">
-                <span>Total Acumulado:</span>
-                <span class="text-success">Bs {{ number_format($pedido->total, 2) }}</span>
+                <span id="label-total-offcanvas">Total Estimado:</span>
+                <span class="text-success" id="total-offcanvas">Bs {{ number_format($pedido ? $pedido->total : 0, 2) }}</span>
             </div>
             
+            @if($pedido)
             <div class="d-grid gap-2">
                 <button type="button" class="btn btn-outline-primary" id="btn-imprimir-precuenta" onclick="imprimirPreCuenta({{ $pedido->id }})">
                     <i class="bi bi-printer me-2"></i>Imprimir Pre-Cuenta
                 </button>
             </div>
+            @endif
         </div>
-        @endif
     </div>
 
 </div>
@@ -229,35 +232,92 @@
 <script>
 // Mapa de cantidades seleccionadas en este formulario
 const seleccion = {};
+const pedidoTotalDb = {{ $pedido ? $pedido->total : 0 }};
 
-function cambiarCant(key, prodId, delta) {
+const stockDeProductos = {
+    @foreach($categorias as $cat)
+        @foreach($cat->productos as $p)
+            '{{ $p->id }}': {
+                usa_inventario: {{ $p->usa_inventario ? 'true' : 'false' }},
+                stock: {{ $p->stock ?? 0 }}
+            },
+        @endforeach
+    @endforeach
+};
+
+function cambiarCant(key, prodId, delta, nombre, precio) {
     const input = document.getElementById('qty-' + key);
     let val = (parseInt(input.value) || 0) + delta;
     if (val < 0) val = 0;
+    
+    const productData = stockDeProductos[prodId];
+    if (productData && productData.usa_inventario && delta > 0) {
+        let totalPedidoActualmente = 0;
+        document.querySelectorAll(`[id^="qty-p_${prodId}_"]`).forEach(inp => {
+            if (inp.id !== 'qty-' + key) {
+                totalPedidoActualmente += parseInt(inp.value) || 0;
+            }
+        });
+        if (totalPedidoActualmente + val > productData.stock) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Stock Agotado',
+                text: `No hay suficiente stock disponible para "${nombre}". Stock máximo: ${productData.stock}`,
+                confirmButtonColor: '#ffc107'
+            });
+            return;
+        }
+    }
+
     input.value = val;
-    sincronizar(key, prodId, val);
+    sincronizar(key, prodId, val, nombre, precio);
 }
 
-function actualizarDesdeInput(key, prodId) {
+function actualizarDesdeInput(key, prodId, nombre, precio) {
     const input = document.getElementById('qty-' + key);
     const val = Math.max(0, parseInt(input.value) || 0);
+
+    const productData = stockDeProductos[prodId];
+    if (productData && productData.usa_inventario && val > 0) {
+        let totalPedidoActualmente = 0;
+        document.querySelectorAll(`[id^="qty-p_${prodId}_"]`).forEach(inp => {
+            if (inp.id !== 'qty-' + key) {
+                totalPedidoActualmente += parseInt(inp.value) || 0;
+            }
+        });
+        if (totalPedidoActualmente + val > productData.stock) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Stock Agotado',
+                text: `No puedes agregar esa cantidad. Stock disponible para "${nombre}": ${productData.stock}`,
+                confirmButtonColor: '#ffc107'
+            });
+            input.value = 0;
+            sincronizar(key, prodId, 0, nombre, precio);
+            return;
+        }
+    }
+
     input.value = val;
-    sincronizar(key, prodId, val);
+    sincronizar(key, prodId, val, nombre, precio);
 }
 
-function sincronizar(key, prodId, val) {
+function sincronizar(key, prodId, val, nombre, precio) {
     const hidQty = document.getElementById('hid-qty-' + key);
     const hidPid = document.getElementById('hid-pid-' + key);
     const hidPrc = document.getElementById('hid-prc-' + key);
+    const hidNota = document.getElementById('hid-nota-' + key);
     const card   = document.getElementById('card-' + prodId);
 
     hidQty.value = val;
 
     if (val > 0) {
-        seleccion[key] = val;
+        const prevNotas = seleccion[key] ? seleccion[key].notas : '';
+        seleccion[key] = { val, nombre, precio, key, notas: prevNotas };
         hidQty.disabled = false;
         hidPid.disabled = false;
         hidPrc.disabled = false;
+        hidNota.disabled = false;
         card.style.borderColor = '#0d6efd';
         card.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
     } else {
@@ -265,6 +325,8 @@ function sincronizar(key, prodId, val) {
         hidQty.disabled = true;
         hidPid.disabled = true;
         hidPrc.disabled = true;
+        hidNota.disabled = true;
+        hidNota.value = '';
 
         // Solo quitar el color si NO hay otra variante del mismo producto con cantidad > 0
         const otrasVariantes = Object.keys(seleccion).filter(k => k.startsWith('p_' + prodId + '_'));
@@ -274,10 +336,87 @@ function sincronizar(key, prodId, val) {
         }
     }
 
-    // Actualizar resumen
-    const total = Object.values(seleccion).reduce((s, v) => s + v, 0);
-    document.getElementById('resumen-count').textContent = total + (total === 1 ? ' item' : ' items');
-    document.getElementById('btn-registrar').disabled = total === 0;
+    // Actualizar resumen de barra inferior
+    const totalCantidad = Object.values(seleccion).reduce((s, item) => s + item.val, 0);
+    document.getElementById('resumen-count').textContent = totalCantidad + (totalCantidad === 1 ? ' item' : ' items');
+    document.getElementById('btn-registrar').disabled = totalCantidad === 0;
+
+    // Actualizar offcanvas
+    renderNewItemsOffcanvas();
+}
+
+function actualizarNota(key, notaText) {
+    if (seleccion[key]) {
+        seleccion[key].notas = notaText;
+        const hidNota = document.getElementById('hid-nota-' + key);
+        if (hidNota) {
+            hidNota.value = notaText;
+        }
+    }
+}
+
+function renderNewItemsOffcanvas() {
+    const container = document.getElementById('new-items-offcanvas-list');
+    const section = document.getElementById('new-items-offcanvas-section');
+    const emptyMsg = document.getElementById('empty-pedido-msg');
+    
+    container.innerHTML = '';
+    const items = Object.values(seleccion);
+
+    let dbItemsCount = {{ $pedido ? $pedido->detalles->count() : 0 }};
+
+    if (items.length === 0) {
+        section.style.display = 'none';
+        if (dbItemsCount === 0) {
+            emptyMsg.style.display = 'block';
+        } else {
+            emptyMsg.style.display = 'none';
+        }
+        actualizarTotalOffcanvas();
+        return;
+    }
+
+    section.style.display = 'block';
+    emptyMsg.style.display = 'none';
+
+    items.forEach(item => {
+        const li = document.createElement('div');
+        li.className = 'd-flex flex-column py-2 px-3 border-bottom bg-light-subtle';
+        li.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex flex-column">
+                    <span class="fw-bold text-dark" style="font-size: 0.9rem;">${item.nombre}</span>
+                    <span class="text-primary" style="font-size: 0.8rem;">+ Por agregar (Bs ${item.precio.toFixed(2)})</span>
+                </div>
+                <div class="text-end d-flex flex-column align-items-end">
+                    <span class="badge bg-primary">x${item.val}</span>
+                    <strong class="mt-1 text-primary" style="font-size: 0.9rem;">
+                        Bs ${(item.val * item.precio).toFixed(2)}
+                    </strong>
+                </div>
+            </div>
+            <div class="w-100 mt-1">
+                <input type="text" placeholder="Especificaciones (ej. Sin cebolla)..." 
+                       class="form-control form-control-sm border-1 mt-1" 
+                       style="font-size: 0.8rem;" 
+                       value="${item.notas || ''}" 
+                       oninput="actualizarNota('${item.key}', this.value)">
+            </div>
+        `;
+        container.appendChild(li);
+    });
+
+    actualizarTotalOffcanvas();
+}
+
+function actualizarTotalOffcanvas() {
+    let totalNuevos = 0;
+    Object.values(seleccion).forEach(item => {
+        totalNuevos += item.val * item.precio;
+    });
+
+    const totalGeneral = pedidoTotalDb + totalNuevos;
+    document.getElementById('total-offcanvas').innerText = 'Bs ' + totalGeneral.toLocaleString('en-US', { minimumFractionDigits: 2 });
 }
 
 // Función para imprimir pre-cuenta desde el celular
@@ -298,7 +437,6 @@ function imprimirPreCuenta(pedidoId) {
     .then(response => response.json())
     .then(data => {
         if(data.success) {
-            // Mostrar pequeño feedback
             btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>¡Enviado!';
             btn.classList.replace('btn-outline-primary', 'btn-success');
             btn.classList.add('text-white');
@@ -310,13 +448,23 @@ function imprimirPreCuenta(pedidoId) {
                 btn.disabled = false;
             }, 3000);
         } else {
-            alert(data.message || 'Error al imprimir');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Impresora',
+                text: data.message || 'Error al imprimir',
+                confirmButtonColor: '#e63946'
+            });
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
         }
     })
     .catch(error => {
-        alert('Error de conexión con la impresora');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'Error de conexión con la impresora',
+            confirmButtonColor: '#e63946'
+        });
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
     });

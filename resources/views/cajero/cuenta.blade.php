@@ -30,15 +30,26 @@
                 --------------------------------
             </p>
 
-            <div style="text-align: left; font-size: 11pt;">
+            <div style="text-align: left; font-size: 10pt; font-family: 'Courier New', Courier, monospace;">
+                {{-- Encabezado de columnas --}}
+                <div style="display: flex; border-bottom: 1px dashed #000; padding-bottom: 4px; font-weight: bold; margin-bottom: 6px; font-size: 10pt;">
+                    <span style="width: 12%;">CANT</span>
+                    <span style="width: 50%;">DETALLE</span>
+                    <span style="width: 18%; text-align: right;">PREU</span>
+                    <span style="width: 20%; text-align: right;">SUBT</span>
+                </div>
+
+                {{-- Detalles --}}
                 @foreach($pedido->detalles as $det)
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span>{{ $det->cantidad }} x {{ strtoupper(substr($det->nombre_mostrar, 0, 18)) }}</span>
-                        <span>Bs {{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
+                    <div style="display: flex; margin-bottom: 5px; align-items: flex-start; line-height: 1.2;">
+                        <span style="width: 12%; font-weight: bold;">{{ $det->cantidad }}</span>
+                        <span style="width: 50%; word-break: break-word;">{{ strtoupper($det->nombre_mostrar) }}</span>
+                        <span style="width: 18%; text-align: right;">{{ number_format($det->precio_unitario, 1) }}</span>
+                        <span style="width: 20%; text-align: right;">{{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
                     </div>
                 @endforeach
                 
-                <div style="margin-top: 10px; border-top: 1px dashed #000; padding-top: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 15pt;">
+                <div style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 8px; display: flex; justify-content: space-between; font-weight: bold; font-size: 14pt;">
                     <span>TOTAL:</span>
                     <span>Bs {{ number_format($pedido->total, 2) }}</span>
                 </div>

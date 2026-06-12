@@ -21,6 +21,27 @@
                             <span class="text-muted">Ventas del Turno (+):</span>
                             <span class="fw-bold fs-5 text-success">Bs {{ number_format($totalVentas, 2) }}</span>
                         </div>
+                        
+                        {{-- Desglose por método de pago --}}
+                        <div class="ps-3 border-start border-2 border-success-subtle mb-3">
+                            <div class="d-flex justify-content-between mb-1 small text-muted">
+                                <span>💵 Efectivo:</span>
+                                <span class="fw-semibold">Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1 small text-muted">
+                                <span>📱 Pago QR:</span>
+                                <span class="fw-semibold">Bs {{ number_format($ventasPorMetodo['qr'], 2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1 small text-muted">
+                                <span>💳 Tarjeta:</span>
+                                <span class="fw-semibold">Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-1 small text-muted">
+                                <span>🏦 Transferencia:</span>
+                                <span class="fw-semibold">Bs {{ number_format($ventasPorMetodo['transferencia'], 2) }}</span>
+                            </div>
+                        </div>
+
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">Gastos Registrados (-):</span>
                             <span class="fw-bold fs-5 text-danger">-Bs {{ number_format($totalGastos, 2) }}</span>
@@ -31,7 +52,7 @@
                             <span class="fw-bold h5 text-primary">Bs {{ number_format(($caja->monto_inicial + $totalVentas) - $totalGastos, 2) }}</span>
                         </div>
                         <p class="text-muted mt-3 mb-0" style="font-size: 0.8rem; line-height: 1.3;">
-                            <i class="bi bi-info-circle me-1"></i> El reporte de cierre detallará cuánto dinero corresponde a <strong>Efectivo</strong> y cuánto a <strong>QR/Transferencia</strong>.
+                            <i class="bi bi-info-circle me-1"></i> El reporte de cierre detallará esta información y registrará el saldo final de caja.
                         </p>
                     </div>
 

@@ -32,7 +32,7 @@ class HomeController extends Controller
     } elseif ($user->role == 'cajero') {
         return redirect()->route('cajero.dashboard');
     } elseif ($user->role == 'mesero') {
-        return redirect()->route('mesero.salon');
+        return redirect()->route('mesero.dashboard');
     }
 
     // Si por alguna razón no tiene rol, lo deslogueamos

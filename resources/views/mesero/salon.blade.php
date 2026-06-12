@@ -4,14 +4,8 @@
 <div class="container-fluid px-4 py-3">
 
     {{-- Header --}}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <a href="{{ route('mesero.dashboard') }}" class="btn btn-sm btn-outline-secondary me-2">
-                <i class="bi bi-house"></i>
-            </a>
-            <span class="fw-bold fs-4">🪑 Salón de Mesas</span>
-        </div>
-        <span class="text-muted">{{ Auth::user()->name }}</span>
+    <div class="d-flex justify-content-center align-items-center mb-4 position-relative">
+        <h2 class="fw-bold fs-3 mb-0 text-center">🪑 Salón de Mesas</h2>
     </div>
 
     {{-- Leyenda --}}
@@ -226,13 +220,23 @@ function imprimirComanda(pedidoId) {
                 btn.disabled = false;
             }, 3000);
         } else {
-            alert(data.message || 'Error al imprimir');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Impresora',
+                text: data.message || 'Error al imprimir',
+                confirmButtonColor: '#e63946'
+            });
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
         }
     })
     .catch(error => {
-        alert('Error de conexión con la impresora');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'Error de conexión con la impresora',
+            confirmButtonColor: '#e63946'
+        });
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
     });
@@ -245,7 +249,7 @@ function imprimirPreCuenta(pedidoId) {
     
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Imprimiendo...';
     btn.disabled = true;
-
+ 
     fetch(`/mesero/api/imprimir/cuenta/${pedidoId}`, {
         method: 'POST',
         headers: {
@@ -267,13 +271,23 @@ function imprimirPreCuenta(pedidoId) {
                 btn.disabled = false;
             }, 3000);
         } else {
-            alert(data.message || 'Error al imprimir');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Impresora',
+                text: data.message || 'Error al imprimir',
+                confirmButtonColor: '#e63946'
+            });
             btn.innerHTML = textoOriginal;
             btn.disabled = false;
         }
     })
     .catch(error => {
-        alert('Error de conexión con la impresora');
+        Swal.fire({
+            icon: 'error',
+            title: 'Error de Red',
+            text: 'Error de conexión con la impresora',
+            confirmButtonColor: '#e63946'
+        });
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
     });

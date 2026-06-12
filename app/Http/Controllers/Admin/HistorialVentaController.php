@@ -14,12 +14,15 @@ class HistorialVentaController extends Controller
         $query = Factura::with(['pedido.mesa', 'cajero'])->orderBy('created_at', 'desc');
 
         // Filtros
-        if ($request->filled('fecha_desde')) {
-            $query->whereDate('created_at', '>=', $request->fecha_desde);
-        }
-        
-        if ($request->filled('fecha_hasta')) {
-            $query->whereDate('created_at', '<=', $request->fecha_hasta);
+        if ($request->filled('fecha_especifica')) {
+            $query->whereDate('created_at', $request->fecha_especifica);
+        } else {
+            if ($request->filled('fecha_desde')) {
+                $query->whereDate('created_at', '>=', $request->fecha_desde);
+            }
+            if ($request->filled('fecha_hasta')) {
+                $query->whereDate('created_at', '<=', $request->fecha_hasta);
+            }
         }
 
         if ($request->filled('cajero_id')) {

@@ -14,9 +14,22 @@
     <!-- Scripts (Vite) -->
     @vite(['resources/sass/app.scss', 'resources/js/app.js'])
 
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         /* Mini ajustes adicionales inline por si Vite no compiló aún */
         body { font-family: 'Inter', sans-serif; }
+
+        /* Ocultar flechas (spinners) en inputs de número */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body>
@@ -83,6 +96,10 @@
                                     </span>
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                    <a class="dropdown-item" href="{{ route('perfil.edit') }}">
+                                        <i class="bi bi-person me-2 text-primary"></i>Mi Perfil
+                                    </a>
+                                    <div class="dropdown-divider"></div>
                                     <a class="dropdown-item text-danger"
                                        href="{{ route('logout') }}"
                                        onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
@@ -107,6 +124,42 @@
 
     </div>
     
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Interceptar formularios con la clase 'swal-confirm-form'
+            document.body.addEventListener('submit', function (e) {
+                const form = e.target;
+                if (form.classList.contains('swal-confirm-form')) {
+                    e.preventDefault();
+                    
+                    const message = form.getAttribute('data-swal-message') || '¿Estás seguro de realizar esta acción?';
+                    const title = form.getAttribute('data-swal-title') || '¿Confirmar acción?';
+                    const icon = form.getAttribute('data-swal-icon') || 'warning';
+                    const confirmButtonText = form.getAttribute('data-swal-confirm-text') || 'Sí, confirmar';
+                    const cancelButtonText = form.getAttribute('data-swal-cancel-text') || 'No, cancelar';
+                    const confirmColor = icon === 'danger' || icon === 'error' ? '#dc3545' : '#4361ee';
+
+                    Swal.fire({
+                        title: title,
+                        text: message,
+                        icon: icon,
+                        showCancelButton: true,
+                        confirmButtonColor: confirmColor,
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: confirmButtonText,
+                        cancelButtonText: cancelButtonText,
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            form.classList.remove('swal-confirm-form');
+                            form.submit();
+                        }
+                    });
+                }
+            });
+        });
+    </script>
+
     @yield('scripts')
 </body>
 </html>

@@ -55,12 +55,31 @@ class ProductoController extends Controller
         $data['disponible'] = $request->has('disponible');
         $data['usa_inventario'] = $request->has('usa_inventario');
         $data['stock'] = $request->input('stock', 0);
+
+        if (!$request->has('toggle_precio_2')) {
+            $data['precio_2'] = null;
+            $data['precio_2_nombre'] = null;
+            $data['costo_2'] = 0;
+        }
+        if (!$request->has('toggle_precio_3')) {
+            $data['precio_3'] = null;
+            $data['precio_3_nombre'] = null;
+            $data['costo_3'] = 0;
+        }
         
         if ($request->hasFile('imagen')) {
             $data['imagen'] = $request->file('imagen')->store('productos', 'public');
         }
         
-        \App\Models\Producto::create($data);
+        $producto = \App\Models\Producto::create($data);
+
+        if ($producto->usa_inventario && $producto->stock > 0) {
+            \App\Models\Compra::create([
+                'producto_id' => $producto->id,
+                'cantidad' => $producto->stock,
+            ]);
+        }
+        
         return redirect()->route('admin.productos.index')->with('success', 'Producto creado.');
     }
 
@@ -92,10 +111,23 @@ class ProductoController extends Controller
         ]);
         
         $producto = \App\Models\Producto::findOrFail($id);
+        $old_stock = $producto->stock;
+        
         $data = $request->all();
         $data['disponible'] = $request->has('disponible');
         $data['usa_inventario'] = $request->has('usa_inventario');
         $data['stock'] = $request->input('stock', 0);
+
+        if (!$request->has('toggle_precio_2')) {
+            $data['precio_2'] = null;
+            $data['precio_2_nombre'] = null;
+            $data['costo_2'] = 0;
+        }
+        if (!$request->has('toggle_precio_3')) {
+            $data['precio_3'] = null;
+            $data['precio_3_nombre'] = null;
+            $data['costo_3'] = 0;
+        }
         
         if ($request->hasFile('imagen')) {
             if ($producto->imagen && \Illuminate\Support\Facades\Storage::disk('public')->exists($producto->imagen)) {
@@ -105,6 +137,14 @@ class ProductoController extends Controller
         }
         
         $producto->update($data);
+
+        if ($producto->usa_inventario && $producto->stock > $old_stock) {
+            \App\Models\Compra::create([
+                'producto_id' => $producto->id,
+                'cantidad' => $producto->stock - $old_stock,
+            ]);
+        }
+        
         return redirect()->route('admin.productos.index')->with('success', 'Producto actualizado.');
     }
 

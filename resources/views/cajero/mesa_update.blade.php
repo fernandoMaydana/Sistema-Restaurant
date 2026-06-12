@@ -44,33 +44,33 @@
                         <div class="tab-content">
                             @foreach($categorias as $i => $cat)
                                 <div class="tab-pane fade {{ $i === 0 ? 'show active' : '' }}" id="cat-{{ $cat->id }}">
-                                    <div class="row row-cols-1 row-cols-lg-2 g-3">
+                                    <div class="row row-cols-1 row-cols-xl-2 g-4">
                                         @foreach($cat->productos as $prod)
                                             <div class="col">
                                                 <div class="card h-100 border shadow-sm item-card" id="card-prod-{{ $prod->id }}">
-                                                    <div class="card-body p-2 d-flex align-items-center">
-                                                        <div class="bg-white rounded border d-flex align-items-center justify-content-center text-muted position-relative" style="width: 60px; height: 60px; flex-shrink: 0;">
+                                                    <div class="card-body p-4 d-flex align-items-center">
+                                                        <div class="bg-white rounded border d-flex align-items-center justify-content-center text-muted position-relative" style="width: 120px; height: 120px; flex-shrink: 0;">
                                                             @if($prod->imagen)
-                                                                <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
+                                                                 <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
                                                             @else
-                                                                <i class="bi bi-image"></i>
+                                                                 <i class="bi bi-image fs-1"></i>
                                                             @endif
 
                                                             @if($prod->usa_inventario)
-                                                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.65rem; z-index: 10;">
+                                                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.75rem; z-index: 10;">
                                                                     {{ $prod->stock }}
                                                                 </span>
                                                             @endif
                                                         </div>
-                                                        <div class="ms-3 flex-grow-1">
-                                                            <div class="fw-bold small">{{ $prod->nombre }}</div>
-                                                            <div class="d-flex justify-content-between align-items-center mt-1">
-                                                                <span class="text-success fw-bold">Bs {{ number_format($prod->precio, 2) }}</span>
+                                                        <div class="ms-4 flex-grow-1">
+                                                            <div class="fw-bold fs-4 mb-3 text-dark">{{ $prod->nombre }}</div>
+                                                            <div class="d-flex justify-content-between align-items-center mt-2">
+                                                                <span class="text-success fw-bold fs-4">Bs {{ number_format($prod->precio, 2) }}</span>
                                                                 @include('cajero.partials.pos_counter', ['key' => 'p_' . $prod->id . '_1', 'prod' => $prod, 'precio' => $prod->precio, 'tipo' => 'nuevo'])
                                                             </div>
                                                             @if($prod->precio_2)
-                                                                <div class="d-flex justify-content-between align-items-center mt-1 pt-1 border-top border-light">
-                                                                    <span class="text-primary small fw-bold">
+                                                                <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top border-light">
+                                                                    <span class="text-primary fw-bold fs-5">
                                                                         Bs {{ number_format($prod->precio_2, 2) }} 
                                                                         <small class="text-muted">({{ $prod->precio_2_nombre }})</small>
                                                                     </span>
@@ -114,7 +114,7 @@
                                             <button type="button" class="btn btn-sm btn-outline-success p-0 rounded-circle" style="width: 24px; height: 24px;" onclick="modificarExistente('{{ $det->id }}', 1)">+</button>
                                         </div>
                                         <div class="text-end fw-bold ms-3" style="min-width: 70px;">
-                                            $<span id="det-subtotal-{{ $det->id }}">{{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
+                                            Bs <span id="det-subtotal-{{ $det->id }}">{{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
                                         </div>
                                     </div>
                                 @endforeach
@@ -150,6 +150,17 @@
 <script>
     const seleccion = {}; // Para nuevos items
     const existentes = {}; // Para items ya registrados
+
+    const stockDeProductos = {
+        @foreach($categorias as $cat)
+            @foreach($cat->productos as $p)
+                '{{ $p->id }}': {
+                    usa_inventario: {{ $p->usa_inventario ? 'true' : 'false' }},
+                    stock: {{ $p->stock ?? 0 }}
+                },
+            @endforeach
+        @endforeach
+    };
 
     // Inicializar totales
     document.addEventListener('DOMContentLoaded', () => {
@@ -192,8 +203,27 @@
         const input = document.getElementById('qty-' + key);
         let val = (parseInt(input.value) || 0) + delta;
         if (val < 0) val = 0;
-        input.value = val;
         
+        const productData = stockDeProductos[prodId];
+        if (productData && productData.usa_inventario && delta > 0) {
+            let totalPedidoActualmente = 0;
+            document.querySelectorAll(`[id^="qty-p_${prodId}_"]`).forEach(inp => {
+                if (inp.id !== 'qty-' + key) {
+                    totalPedidoActualmente += parseInt(inp.value) || 0;
+                }
+            });
+            if (totalPedidoActualmente + val > productData.stock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Agotado',
+                    text: `No hay suficiente stock disponible para "${nombre}". Stock máximo: ${productData.stock}`,
+                    confirmButtonColor: '#ffc107'
+                });
+                return;
+            }
+        }
+
+        input.value = val;
         sincronizarNuevo(key, prodId, val, nombre, precio);
     }
 
@@ -201,20 +231,25 @@
         const hidQty = document.getElementById('hid-qty-' + key);
         const hidPid = document.getElementById('hid-pid-' + key);
         const hidPrc = document.getElementById('hid-prc-' + key);
+        const hidNota = document.getElementById('hid-nota-' + key);
         const card   = document.getElementById('card-prod-' + prodId);
 
         if (val > 0) {
-            seleccion[key] = { nombre, precio, val, prodId };
+            const prevNotas = seleccion[key] ? seleccion[key].notas : '';
+            seleccion[key] = { nombre, precio, val, prodId, key, notas: prevNotas };
             hidQty.value = val;
             hidQty.disabled = false;
             hidPid.disabled = false;
             hidPrc.disabled = false;
+            hidNota.disabled = false;
             if(card) card.classList.add('border-primary', 'bg-primary-subtle');
         } else {
             delete seleccion[key];
             hidQty.disabled = true;
             hidPid.disabled = true;
             hidPrc.disabled = true;
+            hidNota.disabled = true;
+            hidNota.value = '';
             
             // Si no hay otras variantes de este mismo producto
             const otras = Object.keys(seleccion).filter(k => k.startsWith('p_' + prodId + '_'));
@@ -223,6 +258,16 @@
 
         renderNewItems();
         calcularTotalGeneral();
+    }
+
+    function actualizarNotaNuevo(key, notaText) {
+        if (seleccion[key]) {
+            seleccion[key].notas = notaText;
+            const hidNota = document.getElementById('hid-nota-' + key);
+            if (hidNota) {
+                hidNota.value = notaText;
+            }
+        }
     }
 
     function renderNewItems() {
@@ -239,15 +284,24 @@
 
         items.forEach(item => {
             const div = document.createElement('div');
-            div.className = 'd-flex justify-content-between align-items-center mb-2 animate__animated animate__fadeIn';
+            div.className = 'd-flex flex-column mb-3 animate__animated animate__fadeIn border-bottom pb-2';
             div.innerHTML = `
-                <div style="flex: 1;">
-                    <div class="fw-bold" style="font-size: 0.85rem;">${item.nombre}</div>
-                    <small class="text-primary">+ Nuevo</small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div style="flex: 1;">
+                        <div class="fw-bold" style="font-size: 0.85rem;">${item.nombre}</div>
+                        <small class="text-primary">+ Nuevo</small>
+                    </div>
+                    <div class="fw-bold text-end ms-3">
+                        <span class="badge bg-primary">x${item.val}</span>
+                        <div class="small">Bs ${(item.val * item.precio).toFixed(2)}</div>
+                    </div>
                 </div>
-                <div class="fw-bold text-end ms-3">
-                    <span class="badge bg-primary">x${item.val}</span>
-                    <div class="small">$${(item.val * item.precio).toFixed(2)}</div>
+                <div class="w-100 mt-1">
+                    <input type="text" placeholder="Especificaciones (ej. Sin cebolla)..." 
+                           class="form-control form-control-sm border-1 mt-1" 
+                           style="font-size: 0.75rem;" 
+                           value="${item.notas || ''}" 
+                           oninput="actualizarNotaNuevo('${item.key}', this.value)">
                 </div>
             `;
             container.appendChild(div);
@@ -267,7 +321,7 @@
             total += item.val * item.precio;
         });
 
-        document.getElementById('total-general').innerText = '$' + total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        document.getElementById('total-general').innerText = 'Bs ' + total.toLocaleString('en-US', { minimumFractionDigits: 2 });
     }
 </script>
 
