@@ -1,7 +1,7 @@
 Set WshShell = CreateObject("WScript.Shell")
 
 ' Obtener la ruta de la carpeta donde esta este archivo
-strPath = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptPosition)
+strPath = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName)
 WshShell.CurrentDirectory = strPath
 
 ' Ejecutar el servidor de Laravel de forma 100% oculta (el parametro 0 oculta la ventana)
