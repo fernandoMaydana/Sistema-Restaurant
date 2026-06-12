@@ -11,4 +11,4 @@ WshShell.Run "php artisan serve --host 0.0.0.0", 0, false
 WScript.Sleep 3000
 
 ' Abrir el navegador en localhost (para asegurar que siempre abra en la PC local aunque cambie la IP)
-WshShell.Run "cmd /c start http://localhost:8000", 0, false
+WshShell.Run "cmd /c start http://192.168.0.7:8000", 0, false
