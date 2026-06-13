@@ -2,10 +2,11 @@
 
 @section('content')
 <div class="container-fluid">
-    <div class="row">
+    <div class="row flex-nowrap">
         <!-- Sidebar -->
-        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse" style="min-height: calc(100vh - 56px);">
-            <div class="position-sticky pt-3">
+        <div class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse px-0"
+             style="height: calc(100vh - 56px); position: sticky; top: 56px; overflow-y: auto; overflow-x: hidden;">
+            <div class="pt-3">
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('admin.dashboard') ? 'active fw-bold' : '' }}" href="{{ route('admin.dashboard') }}">
