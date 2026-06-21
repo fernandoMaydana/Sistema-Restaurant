@@ -38,6 +38,11 @@
                             <i class="bi bi-box text-info me-2"></i> Productos
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.combos.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.combos.index') }}">
+                            <i class="bi bi-gift text-danger me-2"></i> Combos y Promos
+                        </a>
+                    </li>
                     <li class="nav-item mt-3">
                         <span class="nav-link text-muted fw-bold text-uppercase px-3" style="font-size: 0.75rem;">Finanzas</span>
                     </li>

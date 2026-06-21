@@ -11,6 +11,7 @@ use App\Models\Categoria;
 use App\Models\Producto;
 use App\Models\CajaSesion;
 use App\Models\Gasto;
+use App\Models\ConsumoPersonal;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Mike42\Escpos\Printer;
@@ -295,8 +296,10 @@ class CajeraController extends Controller
         $categorias = Categoria::with(['productos' => function ($q) {
             $q->where('disponible', true)->orderBy('id');
         }])->get()->filter(fn($c) => $c->productos->count() > 0);
+
+        $combos = \App\Models\Combo::activos()->with('items.producto')->get();
  
-        return view('cajero.mesa_update', compact('mesa', 'pedido', 'categorias'));
+        return view('cajero.mesa_update', compact('mesa', 'pedido', 'categorias', 'combos'));
     }
 
     /**
@@ -1245,6 +1248,40 @@ class CajeraController extends Controller
         ]);
 
         return redirect()->back()->with('success', '✅ Stock de "' . $producto->nombre . '" actualizado correctamente. Se sumaron ' . $request->cantidad . ' unidades (Nuevo stock: ' . $producto->stock . ').');
+    }
+
+    /**
+     * Descuenta stock por consumo del personal.
+     */
+    public function descontarConsumoPersonal(Request $request, $id)
+    {
+        $request->validate([
+            'cantidad'    => 'required|integer|min:1',
+            'descripcion' => 'nullable|string|max:255',
+        ]);
+
+        $producto = Producto::findOrFail($id);
+
+        if (!$producto->usa_inventario) {
+            return redirect()->back()->with('error', 'El producto seleccionado no maneja inventario.');
+        }
+
+        if ($producto->stock < $request->cantidad) {
+            return redirect()->back()->with('error', "No hay suficiente stock para descontar. Stock disponible: {$producto->stock} ud.");
+        }
+
+        // Descontar stock
+        $producto->decrement('stock', $request->cantidad);
+
+        // Registrar consumo del personal
+        ConsumoPersonal::create([
+            'producto_id' => $producto->id,
+            'user_id'     => auth()->id(),
+            'cantidad'    => $request->cantidad,
+            'descripcion' => $request->descripcion,
+        ]);
+
+        return redirect()->back()->with('success', '✅ Consumo del personal registrado. Se descontaron ' . $request->cantidad . ' ud. de "' . $producto->nombre . '" (Stock restante: ' . $producto->fresh()->stock . ').');
     }
 
     /**

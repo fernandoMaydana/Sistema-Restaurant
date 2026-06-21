@@ -73,6 +73,10 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Control de Stock
     Route::get('/stock', [StockController::class, 'index'])->name('stock.index');
     Route::post('/stock/compra', [StockController::class, 'registrarCompra'])->name('stock.registrar_compra');
+
+    // Combos y Promociones
+    Route::resource('combos', \App\Http\Controllers\Admin\ComboController::class);
+    Route::post('/combos/{id}/toggle', [\App\Http\Controllers\Admin\ComboController::class, 'toggle'])->name('combos.toggle');
 });
 
 // Grupo para el CAJERO
@@ -128,6 +132,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     // Inventario y Control de Stock
     Route::get('/inventario', [CajeraController::class, 'inventario'])->name('inventario');
     Route::post('/inventario/agregar-stock/{id}', [CajeraController::class, 'agregarStock'])->name('inventario.agregar_stock');
+    Route::post('/inventario/consumo-personal/{id}', [CajeraController::class, 'descontarConsumoPersonal'])->name('inventario.consumo_personal');
 });
 
 // Grupo para el MESERO

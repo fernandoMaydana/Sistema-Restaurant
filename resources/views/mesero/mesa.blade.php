@@ -51,10 +51,19 @@
         {{-- Tabs por categoría --}}
         <div class="px-2">
             <ul class="nav nav-pills mb-3 flex-nowrap overflow-auto pb-2 custom-scrollbar" id="catTabs" style="gap: 8px;">
+                <li class="nav-item flex-shrink-0">
+                    <button type="button"
+                            class="nav-link active px-3 py-2 fw-bold btn-outline-danger text-danger"
+                            data-bs-toggle="pill"
+                            data-bs-target="#cat-combos"
+                            style="border-radius: 20px; font-size: 0.9rem; white-space: nowrap;">
+                        🎁 Combos y Promos
+                    </button>
+                </li>
                 @foreach($categorias as $i => $cat)
                     <li class="nav-item flex-shrink-0">
                         <button type="button"
-                                class="nav-link {{ $i === 0 ? 'active' : '' }} px-3 py-2 fw-bold"
+                                class="nav-link px-3 py-2 fw-bold"
                                 data-bs-toggle="pill"
                                 data-bs-target="#cat-{{ $cat->id }}"
                                 style="border-radius: 20px; font-size: 0.9rem; white-space: nowrap;">
@@ -77,8 +86,56 @@
         </style>
 
         <div class="tab-content px-2">
+            <!-- Pestaña Combos -->
+            <div class="tab-pane fade show active" id="cat-combos">
+                <div class="d-flex flex-column gap-2 mb-4">
+                    @foreach($combos as $combo)
+                        <div class="card border shadow-sm" style="border-radius: 12px; overflow: hidden; border-left: 5px solid #dc3545 !important;">
+                            <div class="d-flex align-items-center p-2">
+                                <div class="flex-shrink-0 bg-light rounded d-flex align-items-center justify-content-center text-muted position-relative" 
+                                     style="width: 70px; height: 70px; border: 1px dashed #ccc;">
+                                    @if($combo->imagen)
+                                        <img src="{{ asset('storage/' . $combo->imagen) }}" alt="{{ $combo->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
+                                    @else
+                                        <i class="bi bi-gift text-danger" style="font-size: 1.5rem;"></i>
+                                    @endif
+                                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; z-index: 10;">
+                                        {{ $combo->tipo === 'fijo' ? 'Fijo' : 'Promo' }}
+                                    </span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="fw-bold mb-1" style="font-size: 0.9rem; line-height: 1.2;">{{ $combo->nombre }}</div>
+                                    <p class="text-muted small mb-1" style="font-size: 0.75rem; line-height: 1.1;">{{ $combo->descripcion }}</p>
+                                    <div class="mb-2">
+                                        @foreach($combo->items as $item)
+                                            <span class="badge bg-secondary mb-1" style="font-size: 0.7rem; padding: 0.2em 0.4em;">
+                                                {{ $item->cantidad }}x {{ $item->producto->nombre ?? 'N/A' }}
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="text-success fw-bold" style="font-size: 0.85rem;">
+                                            Bs {{ number_format($combo->precio_mostrar, 2) }}
+                                        </div>
+                                        <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" style="font-size: 0.8rem; border-radius: 6px;" onclick="agregarComboAlPedido({{ json_encode($combo) }})">
+                                            <i class="bi bi-plus-lg"></i> Agregar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    @endforeach
+                    @if($combos->isEmpty())
+                        <div class="text-center py-5 text-muted">
+                            <i class="bi bi-gift" style="font-size: 2.5rem;"></i>
+                            <p class="mt-2" style="font-size: 0.85rem;">No hay combos activos disponibles.</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             @foreach($categorias as $i => $cat)
-                <div class="tab-pane fade {{ $i === 0 ? 'show active' : '' }}" id="cat-{{ $cat->id }}">
+                <div class="tab-pane fade" id="cat-{{ $cat->id }}">
                     <div class="d-flex flex-column gap-2 mb-4">
                         @foreach($cat->productos as $prod)
                             @php $key = 'p_' . $prod->id; @endphp
@@ -379,29 +436,49 @@ function renderNewItemsOffcanvas() {
     section.style.display = 'block';
     emptyMsg.style.display = 'none';
 
+    let renderedCombos = {};
+
     items.forEach(item => {
         const li = document.createElement('div');
         li.className = 'd-flex flex-column py-2 px-3 border-bottom bg-light-subtle';
+        
+        let deleteBtnHtml = '';
+        if (item.isCombo) {
+            if (!renderedCombos[item.comboKey]) {
+                renderedCombos[item.comboKey] = true;
+                deleteBtnHtml = `
+                    <div class="d-flex justify-content-between align-items-center w-100 mb-2 p-1 bg-danger-subtle rounded border border-danger-subtle">
+                        <span class="small fw-bold text-danger"><i class="bi bi-gift-fill me-1"></i>${item.comboNombre}</span>
+                        <button type="button" class="btn btn-sm btn-danger py-0 px-2 fw-bold" style="font-size: 0.7rem;" onclick="quitarCombo('${item.comboKey}')">
+                            <i class="bi bi-trash-fill"></i> Quitar
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
         li.innerHTML = `
+            ${deleteBtnHtml}
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex flex-column">
                     <span class="fw-bold text-dark" style="font-size: 0.9rem;">${item.nombre}</span>
-                    <span class="text-primary" style="font-size: 0.8rem;">+ Por agregar (Bs ${item.precio.toFixed(2)})</span>
+                    <span class="text-primary" style="font-size: 0.8rem;">${item.isCombo ? '+ Combo' : '+ Por agregar'} (Bs ${item.precio.toFixed(2)})</span>
                 </div>
                 <div class="text-end d-flex flex-column align-items-end">
-                    <span class="badge bg-primary">x${item.val}</span>
-                    <strong class="mt-1 text-primary" style="font-size: 0.9rem;">
+                    <span class="badge ${item.isCombo ? 'bg-danger' : 'bg-primary'}">x${item.val}</span>
+                    <strong class="mt-1 ${item.isCombo ? 'text-danger' : 'text-primary'}" style="font-size: 0.9rem;">
                         Bs ${(item.val * item.precio).toFixed(2)}
                     </strong>
                 </div>
             </div>
+            ${!item.isCombo ? `
             <div class="w-100 mt-1">
                 <input type="text" placeholder="Especificaciones (ej. Sin cebolla)..." 
                        class="form-control form-control-sm border-1 mt-1" 
                        style="font-size: 0.8rem;" 
                        value="${item.notas || ''}" 
                        oninput="actualizarNota('${item.key}', this.value)">
-            </div>
+            </div>` : ''}
         `;
         container.appendChild(li);
     });
@@ -468,6 +545,149 @@ function imprimirPreCuenta(pedidoId) {
         btn.innerHTML = textoOriginal;
         btn.disabled = false;
     });
+}
+
+let comboInstanceCounter = 0;
+
+function agregarComboAlPedido(combo) {
+    // 1. Verificar stock para cada producto en el combo antes de agregarlo
+    for (const item of combo.items) {
+        const prod = item.producto;
+        if (!prod) continue;
+        
+        const productData = stockDeProductos[prod.id];
+        if (productData && productData.usa_inventario) {
+            // Calcular cuánto se ha pedido de este producto en total (normales + combos)
+            let totalPedido = 0;
+            Object.values(seleccion).forEach(selItem => {
+                if (selItem.prodId == prod.id) {
+                    totalPedido += selItem.val;
+                }
+            });
+            
+            if (totalPedido + item.cantidad > productData.stock) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Stock Insuficiente',
+                    text: `No hay suficiente stock para "${prod.nombre}". Requerido: ${item.cantidad}, Disponible: ${productData.stock} (ya tienes ${totalPedido} en el ticket).`,
+                    confirmButtonColor: '#e63946'
+                });
+                return; // Detener toda la adición si falta stock de algún item del combo
+            }
+        }
+    }
+
+    // 2. Calcular precios distribuidos si es combo Fijo
+    let preciosItems = {};
+    
+    if (combo.tipo === 'fijo') {
+        // Suma de precios normales de items no gratuitos
+        let totalNormal = 0;
+        combo.items.forEach(item => {
+            if (!item.es_gratuito && item.producto) {
+                totalNormal += parseFloat(item.producto.precio) * item.cantidad;
+            }
+        });
+
+        // Ratio de descuento
+        const comboPrecio = parseFloat(combo.precio_total);
+        const ratio = totalNormal > 0 ? (comboPrecio / totalNormal) : 0;
+
+        combo.items.forEach(item => {
+            if (item.es_gratuito) {
+                preciosItems[item.id] = 0;
+            } else if (item.producto) {
+                preciosItems[item.id] = parseFloat(item.producto.precio) * ratio;
+            }
+        });
+    } else {
+        // Combo condicionado (los gratis a Bs 0, los otros a su precio normal)
+        combo.items.forEach(item => {
+            if (item.es_gratuito) {
+                preciosItems[item.id] = 0;
+            } else if (item.producto) {
+                preciosItems[item.id] = parseFloat(item.producto.precio);
+            }
+        });
+    }
+
+    // 3. Agregar los productos al pedido con un identificador único por combo
+    const comboKey = 'c_' + combo.id + '_' + Date.now() + '_' + (comboInstanceCounter++);
+    
+    // Agregar inputs ocultos al form
+    const form = document.getElementById('form-pedido');
+
+    combo.items.forEach(item => {
+        const prod = item.producto;
+        if (!prod) return;
+        
+        const itemKey = `${comboKey}_${prod.id}`;
+        const unitPrice = preciosItems[item.id];
+        
+        // Crear inputs ocultos dinámicamente en el formulario para este item del combo
+        const htmlInputs = `
+            <div id="inputs-${itemKey}">
+                <input type="hidden" name="items[${itemKey}][producto_id]" id="hid-pid-${itemKey}" value="${prod.id}">
+                <input type="hidden" name="items[${itemKey}][cantidad]" id="hid-qty-${itemKey}" value="${item.cantidad}">
+                <input type="hidden" name="items[${itemKey}][precio_seleccionado]" id="hid-prc-${itemKey}" value="${unitPrice.toFixed(2)}">
+                <input type="hidden" name="items[${itemKey}][notas]" id="hid-nota-${itemKey}" value="Combo: ${combo.nombre}${item.es_gratuito ? ' (Gratis)' : ''}">
+            </div>
+        `;
+        form.insertAdjacentHTML('beforeend', htmlInputs);
+
+        // Guardar en la estructura frontend `seleccion` para renderizar y sumar
+        seleccion[itemKey] = {
+            nombre: `${prod.nombre} (Combo: ${combo.nombre})`,
+            precio: unitPrice,
+            val: item.cantidad,
+            prodId: prod.id,
+            key: itemKey,
+            notas: `Combo: ${combo.nombre}${item.es_gratuito ? ' (Gratis)' : ''}`,
+            isCombo: true,
+            comboKey: comboKey,
+            comboNombre: combo.nombre
+        };
+    });
+
+    // 4. Renderizar y calcular totales
+    renderNewItemsOffcanvas();
+    actualizarTotalOffcanvas();
+    
+    // Actualizar resumen de barra inferior
+    const totalCantidad = Object.values(seleccion).reduce((s, item) => s + item.val, 0);
+    document.getElementById('resumen-count').textContent = totalCantidad + (totalCantidad === 1 ? ' item' : ' items');
+    document.getElementById('btn-registrar').disabled = totalCantidad === 0;
+
+    Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: `Se agregó el combo "${combo.nombre}"`,
+        showConfirmButton: false,
+        timer: 2000
+    });
+}
+
+function quitarCombo(comboKey) {
+    // 1. Eliminar de seleccion todos los items que tengan el mismo comboKey
+    Object.keys(seleccion).forEach(key => {
+        if (key.startsWith(comboKey)) {
+            delete seleccion[key];
+            
+            // 2. Eliminar del DOM los inputs ocultos
+            const inputsDiv = document.getElementById('inputs-' + key);
+            if (inputsDiv) inputsDiv.remove();
+        }
+    });
+
+    // 3. Renderizar y recalcular
+    renderNewItemsOffcanvas();
+    actualizarTotalOffcanvas();
+    
+    // Actualizar resumen de barra inferior
+    const totalCantidad = Object.values(seleccion).reduce((s, item) => s + item.val, 0);
+    document.getElementById('resumen-count').textContent = totalCantidad + (totalCantidad === 1 ? ' item' : ' items');
+    document.getElementById('btn-registrar').disabled = totalCantidad === 0;
 }
 </script>
 @endsection

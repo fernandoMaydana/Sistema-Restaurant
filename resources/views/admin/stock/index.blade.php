@@ -148,7 +148,7 @@
                             Producto
                         </th>
                         @foreach($activeDates as $dateInfo)
-                            <th colspan="3" class="text-center py-2 fw-bold border-end bg-secondary-subtle" style="font-size: 0.9rem;">
+                            <th colspan="4" class="text-center py-2 fw-bold border-end bg-secondary-subtle" style="font-size: 0.9rem;">
                                 <i class="bi bi-calendar3 me-1 text-primary opacity-75"></i>{{ $dateInfo['formatted'] }}
                             </th>
                         @endforeach
@@ -159,6 +159,7 @@
                             <th class="text-center small py-2 fw-semibold text-muted border-end" style="min-width: 85px; font-size: 0.8rem;">Stock In.</th>
                             <th class="text-center small py-2 fw-semibold text-success border-end" style="min-width: 85px; font-size: 0.8rem;">Compras</th>
                             <th class="text-center small py-2 fw-semibold text-danger border-end" style="min-width: 85px; font-size: 0.8rem;">Ventas</th>
+                            <th class="text-center small py-2 fw-semibold border-end" style="min-width: 90px; font-size: 0.8rem; color: #f57c00;">Personal</th>
                         @endforeach
                     </tr>
                 </thead>
@@ -171,7 +172,7 @@
                             @foreach($activeDates as $dateInfo)
                                 @php
                                     $dString = $dateInfo['date_str'];
-                                    $dayData = $row['history'][$dString] ?? ['stock_inicial' => 0, 'compras' => 0, 'ventas' => 0];
+                                    $dayData = $row['history'][$dString] ?? ['stock_inicial' => 0, 'compras' => 0, 'ventas' => 0, 'consumo_personal' => 0];
                                 @endphp
                                 <td class="text-center fw-semibold text-muted border-end">
                                     {{ $dayData['stock_inicial'] }}
@@ -190,11 +191,18 @@
                                         <span class="text-muted opacity-50">-</span>
                                     @endif
                                 </td>
+                                <td class="text-center border-end" style="background: rgba(245, 124, 0, 0.04);">
+                                    @if(($dayData['consumo_personal'] ?? 0) > 0)
+                                        <span class="fw-bold" style="color: #f57c00;">-{{ $dayData['consumo_personal'] }}</span>
+                                    @else
+                                        <span class="text-muted opacity-50">-</span>
+                                    @endif
+                                </td>
                             @endforeach
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ 1 + count($activeDates) * 3 }}" class="text-center py-5 text-muted">
+                            <td colspan="{{ 1 + count($activeDates) * 4 }}" class="text-center py-5 text-muted">
                                 <i class="bi bi-box-seam fs-1 d-block mb-2 text-black-50"></i>
                                 No se encontraron productos de stock habilitados en las categorías especificadas para este mes.
                             </td>

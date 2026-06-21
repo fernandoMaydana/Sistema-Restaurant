@@ -8,6 +8,7 @@ use App\Models\Producto;
 use App\Models\Categoria;
 use App\Models\Compra;
 use App\Models\PedidoDetalle;
+use App\Models\ConsumoPersonal;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -111,6 +112,17 @@ class StockController extends Controller
             ->groupBy('producto_id', DB::raw('DATE(created_at)'))
             ->get();
 
+        // Consumos del personal (salidas internas)
+        $consumosData = ConsumoPersonal::whereIn('producto_id', $targetProductIds)
+            ->whereDate('created_at', '>=', $startOfMonth)
+            ->select(
+                'producto_id',
+                DB::raw('DATE(created_at) as fecha'),
+                DB::raw('SUM(cantidad) as qty')
+            )
+            ->groupBy('producto_id', DB::raw('DATE(created_at)'))
+            ->get();
+
         // Mapear ventas y compras por producto y fecha
         $salesMap = [];
         foreach ($salesData as $item) {
@@ -122,16 +134,23 @@ class StockController extends Controller
             $purchasesMap[$item->producto_id][$item->fecha] = intval($item->qty);
         }
 
+        $consumosMap = [];
+        foreach ($consumosData as $item) {
+            $consumosMap[$item->producto_id][$item->fecha] = intval($item->qty);
+        }
+
         // Totales históricos para cada producto
         $productTotals = [];
         foreach ($targetProducts as $prod) {
             $pId = $prod->id;
             $salesP = isset($salesMap[$pId]) ? array_sum($salesMap[$pId]) : 0;
             $purchasesP = isset($purchasesMap[$pId]) ? array_sum($purchasesMap[$pId]) : 0;
+            $consumosP = isset($consumosMap[$pId]) ? array_sum($consumosMap[$pId]) : 0;
 
             $productTotals[$pId] = [
-                'total_sales' => $salesP,
+                'total_sales'   => $salesP,
                 'total_purchases' => $purchasesP,
+                'total_consumos'  => $consumosP,
                 'current_stock' => $prod->stock
             ];
         }
@@ -141,35 +160,41 @@ class StockController extends Controller
         foreach ($targetProducts as $prod) {
             $pId = $prod->id;
             
-            $totalSalesP = $productTotals[$pId]['total_sales'];
+            $totalSalesP    = $productTotals[$pId]['total_sales'];
             $totalPurchasesP = $productTotals[$pId]['total_purchases'];
-            $currentStockP = $productTotals[$pId]['current_stock'];
+            $totalConsumosP  = $productTotals[$pId]['total_consumos'];
+            $currentStockP  = $productTotals[$pId]['current_stock'];
             
-            $accumulatedSalesBeforeD = 0;
+            $accumulatedSalesBeforeD    = 0;
             $accumulatedPurchasesBeforeD = 0;
+            $accumulatedConsumosBeforeD  = 0;
             
             $productHistory = [];
             foreach ($activeDates as $dateInfo) {
                 $dString = $dateInfo['date_str'];
                 
-                $salesOnD = isset($salesMap[$pId][$dString]) ? $salesMap[$pId][$dString] : 0;
+                $salesOnD    = isset($salesMap[$pId][$dString]) ? $salesMap[$pId][$dString] : 0;
                 $purchasesOnD = isset($purchasesMap[$pId][$dString]) ? $purchasesMap[$pId][$dString] : 0;
+                $consumosOnD  = isset($consumosMap[$pId][$dString]) ? $consumosMap[$pId][$dString] : 0;
                 
-                $salesFromDToNow = $totalSalesP - $accumulatedSalesBeforeD;
+                $salesFromDToNow    = $totalSalesP - $accumulatedSalesBeforeD;
                 $purchasesFromDToNow = $totalPurchasesP - $accumulatedPurchasesBeforeD;
+                $consumosFromDToNow  = $totalConsumosP - $accumulatedConsumosBeforeD;
                 
-                $stockInicialD = $currentStockP + $salesFromDToNow - $purchasesFromDToNow;
-                $stockFinalD = $stockInicialD + $purchasesOnD - $salesOnD;
+                $stockInicialD = $currentStockP + $salesFromDToNow + $consumosFromDToNow - $purchasesFromDToNow;
+                $stockFinalD   = $stockInicialD + $purchasesOnD - $salesOnD - $consumosOnD;
                 
                 $productHistory[$dString] = [
-                    'stock_inicial' => $stockInicialD,
-                    'compras' => $purchasesOnD,
-                    'ventas' => $salesOnD,
-                    'stock_final' => $stockFinalD
+                    'stock_inicial'    => $stockInicialD,
+                    'compras'          => $purchasesOnD,
+                    'ventas'           => $salesOnD,
+                    'consumo_personal' => $consumosOnD,
+                    'stock_final'      => $stockFinalD
                 ];
                 
-                $accumulatedSalesBeforeD += $salesOnD;
+                $accumulatedSalesBeforeD    += $salesOnD;
                 $accumulatedPurchasesBeforeD += $purchasesOnD;
+                $accumulatedConsumosBeforeD  += $consumosOnD;
             }
             
             $matrix[] = [

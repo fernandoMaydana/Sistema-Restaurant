@@ -54,7 +54,9 @@ class PedidoController extends Controller
             $q->where('disponible', true)->orderBy('id'); // Ordenados por creación (ID)
         }])->get()->filter(fn($c) => $c->productos->count() > 0);
 
-        return view('mesero.mesa', compact('mesa', 'pedido', 'categorias'));
+        $combos = \App\Models\Combo::activos()->with('items.producto')->get();
+
+        return view('mesero.mesa', compact('mesa', 'pedido', 'categorias', 'combos'));
     }
 
     /**
