@@ -126,13 +126,13 @@ class ReporteController extends Controller
 
         // Obtener ventas agrupadas por mes para el año seleccionado
         $ventasDb = Factura::select(
-                DB::raw('MONTH(created_at) as mes'),
+                DB::raw('CAST(EXTRACT(MONTH FROM created_at) AS INTEGER) as mes'),
                 DB::raw('SUM(monto_pagado) as total_ventas'),
                 DB::raw('COUNT(id) as transacciones')
             )
             ->where('estado', 'activa')
             ->whereYear('created_at', $anio)
-            ->groupBy(DB::raw('MONTH(created_at)'))
+            ->groupBy(DB::raw('CAST(EXTRACT(MONTH FROM created_at) AS INTEGER)'))
             ->orderBy('mes', 'asc')
             ->get()
             ->keyBy('mes');
@@ -175,8 +175,8 @@ class ReporteController extends Controller
             ->get();
 
         // Años disponibles en las facturas para el filtro
-        $aniosDisponibles = Factura::select(DB::raw('YEAR(created_at) as anio'))
-            ->groupBy('anio')
+        $aniosDisponibles = Factura::select(DB::raw('CAST(EXTRACT(YEAR FROM created_at) AS INTEGER) as anio'))
+            ->groupBy(DB::raw('CAST(EXTRACT(YEAR FROM created_at) AS INTEGER)'))
             ->orderBy('anio', 'desc')
             ->pluck('anio');
 

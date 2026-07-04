@@ -54,13 +54,17 @@
                                         <div class="col">
                                             <div class="card h-100 border shadow-sm" style="border-radius: 12px; border-left: 5px solid #dc3545 !important;">
                                                 <div class="card-body p-4 d-flex align-items-center">
-                                                    <div class="bg-white rounded border d-flex align-items-center justify-content-center text-muted position-relative" style="width: 100px; height: 100px; flex-shrink: 0;">
-                                                        @if($combo->imagen)
-                                                             <img src="{{ asset('storage/' . $combo->imagen) }}" alt="{{ $combo->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
-                                                        @else
-                                                             <i class="bi bi-gift text-danger fs-1"></i>
-                                                        @endif
-                                                        <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger" style="font-size: 0.7rem; z-index: 10;">
+                                                                                    <div class="position-relative" style="width: 100px; height: 100px; flex-shrink: 0;">
+                                                        <div class="product-zoom-container shadow-xs w-100 h-100" style="border-radius: 14px;">
+                                                            @if($combo->imagen)
+                                                                 <img src="{{ asset('storage/' . $combo->imagen) }}" alt="{{ $combo->nombre }}" class="product-zoom-img" onclick="mostrarLightbox(this)">
+                                                            @else
+                                                                 <div class="product-placeholder-gradient w-100 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);">
+                                                                     <i class="bi bi-gift-fill" style="font-size: 2.2rem; color: #d32f2f;"></i>
+                                                                 </div>
+                                                            @endif
+                                                        </div>
+                                                        <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger" style="font-size: 0.75rem; z-index: 10; padding: 0.35em 0.65em;">
                                                             {{ $combo->tipo === 'fijo' ? 'Fijo' : 'Promo' }}
                                                         </span>
                                                     </div>
@@ -106,15 +110,19 @@
                                             <div class="col">
                                                 <div class="card h-100 border shadow-sm item-card" id="card-prod-{{ $prod->id }}">
                                                     <div class="card-body p-4 d-flex align-items-center">
-                                                        <div class="bg-white rounded border d-flex align-items-center justify-content-center text-muted position-relative" style="width: 120px; height: 120px; flex-shrink: 0;">
-                                                            @if($prod->imagen)
-                                                                 <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 4px;">
-                                                            @else
-                                                                 <i class="bi bi-image fs-1"></i>
-                                                            @endif
-
+                                                        <div class="position-relative" style="width: 120px; height: 120px; flex-shrink: 0;">
+                                                            <div class="product-zoom-container shadow-sm w-100 h-100" style="border-radius: 16px;">
+                                                                @if($prod->imagen)
+                                                                     <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" class="product-zoom-img" onclick="mostrarLightbox(this)">
+                                                                @else
+                                                                     <div class="product-placeholder-gradient w-100 h-100" style="border-radius: 14px;">
+                                                                         <i class="bi bi-egg-fried" style="font-size: 2.8rem;"></i>
+                                                                     </div>
+                                                                @endif
+                                                            </div>
+    
                                                             @if($prod->usa_inventario)
-                                                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.75rem; z-index: 10;">
+                                                                <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.85rem; z-index: 10; padding: 0.35em 0.65em;">
                                                                     {{ $prod->stock }}
                                                                 </span>
                                                             @endif
@@ -537,8 +545,8 @@
 
 <style>
     .nav-pills .nav-link { border-radius: 20px; padding: 0.5rem 1.25rem; }
-    .item-card { cursor: pointer; transition: all 0.2s; }
-    .item-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important; }
-    .bg-primary-subtle { background-color: #e7f1ff !important; }
+    .item-card { cursor: pointer; border-radius: 18px !important; overflow: hidden; transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease; }
+    .item-card:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(0,0,0,0.08) !important; }
+    .bg-primary-subtle { background-color: #eef2ff !important; }
 </style>
 @endsection

@@ -40,4 +40,41 @@ class HistorialVentaController extends Controller
 
         return view('admin.ventas.index', compact('facturas', 'total_filtrado', 'cajeros'));
     }
+
+    /**
+     * Retorna el detalle de los productos de una factura en formato JSON.
+     */
+    public function getDetalle($id)
+    {
+        $factura = Factura::with(['pedido.detalles.producto', 'pedido.mesa', 'cajero'])->findOrFail($id);
+        
+        $detalles = [];
+        if ($factura->pedido) {
+            foreach ($factura->pedido->detalles as $det) {
+                $detalles[] = [
+                    'cantidad' => $det->cantidad,
+                    'producto_nombre' => $det->nombre_mostrar,
+                    'precio_unitario' => floatval($det->precio_unitario),
+                    'subtotal' => floatval($det->cantidad * $det->precio_unitario),
+                    'notas' => $det->notas
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'factura' => [
+                'id' => $factura->id,
+                'fecha' => $factura->created_at->format('d/m/Y H:i'),
+                'mesa_numero' => $factura->pedido?->mesa?->numero ?? 'N/A',
+                'cliente_nombre' => $factura->cliente_nombre ?? 'Consumidor Final',
+                'cliente_nit_ci' => $factura->cliente_nit_ci ?? 'S/N',
+                'metodo_pago' => ucfirst($factura->metodo_pago),
+                'cajero_nombre' => $factura->cajero?->name ?? 'N/A',
+                'monto_pagado' => floatval($factura->monto_pagado),
+                'estado' => $factura->estado,
+            ],
+            'detalles' => $detalles
+        ]);
+    }
 }

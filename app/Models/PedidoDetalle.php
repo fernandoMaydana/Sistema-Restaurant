@@ -22,7 +22,7 @@ class PedidoDetalle extends Model
 
     public function getNombreMostrarAttribute()
     {
-        $nombre = $this->producto->nombre ?? 'Producto Eliminado';
+        $nombre = $this->producto?->nombre ?? 'Producto Eliminado';
         
         if ($this->producto) {
             // Caso 1: Es el Precio 2 (Doble, etc.)

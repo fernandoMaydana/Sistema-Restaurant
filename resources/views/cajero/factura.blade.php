@@ -29,6 +29,45 @@
         </div>
     </div>
 
+    @if($factura->cuf)
+        <div class="card border-0 shadow-sm p-4 rounded-4 mb-4 bg-white w-100" style="max-width: 400px; border-top: 5px solid #4361ee !important;">
+            <div class="mb-3 text-center">
+                <span class="badge bg-primary text-uppercase px-3 py-2 fs-6">
+                    <i class="bi bi-shield-check me-1"></i> SIAT Factura en Línea
+                </span>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted d-block">Número de Factura SIN:</small>
+                <strong class="text-dark">{{ $factura->numero_factura_siat }}</strong>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted d-block">Código Único de Factura (CUF):</small>
+                <div class="p-2 border rounded bg-light font-monospace text-break" style="font-size: 0.75rem;">
+                    {{ $factura->cuf }}
+                </div>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted d-block">Estado SIAT:</small>
+                @if($factura->estado_siat === 'pendiente')
+                    <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle-fill me-1"></i> Contingencia Offline</span>
+                @else
+                    <span class="badge bg-success"><i class="bi bi-check-all me-1"></i> Validada</span>
+                @endif
+            </div>
+            <div class="text-center mt-3 p-2 bg-light rounded-3">
+                <small class="text-muted d-block mb-2">Código QR de Verificación:</small>
+                @php
+                    $nit = \Illuminate\Support\Facades\DB::table('siat_configs')->value('nit') ?? '1020304050';
+                    $qrUrl = "https://siat.impuestos.gob.bo/consulta/QR?nit={$nit}&cuf={$factura->cuf}&numero={$factura->numero_factura_siat}&t=1";
+                @endphp
+                <img src="https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl={{ urlencode($qrUrl) }}&choe=UTF-8" alt="QR SIN" class="img-fluid border p-1 bg-white" style="width: 130px; height: 130px;">
+            </div>
+            <div class="mt-3 text-center border-top pt-2">
+                <small class="text-muted font-italic" style="font-size: 0.8rem;">{{ $factura->leyenda_sin }}</small>
+            </div>
+        </div>
+    @endif
+
     <div class="d-flex flex-column gap-3 w-100" style="max-width: 400px;">
         <button onclick="imprimirFacturaDirecta()" class="btn btn-primary btn-lg fw-bold py-3 shadow-sm rounded-4" id="btn-imprimir-factura">
             <i class="bi bi-printer me-2"></i> IMPRIMIR FACTURA

@@ -59,9 +59,11 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/cajas', [App\Http\Controllers\Admin\CajaController::class, 'index'])->name('cajas.index');
     Route::get('/cajas/{id}/pdf', [App\Http\Controllers\Admin\CajaController::class, 'descargarPdf'])->name('cajas.pdf');
     Route::post('/cajas/{id}/imprimir', [App\Http\Controllers\Admin\CajaController::class, 'imprimirTicket'])->name('cajas.imprimir');
+    Route::get('/cajas/{id}/detalle', [App\Http\Controllers\Admin\CajaController::class, 'getDetalleCaja'])->name('cajas.detalle');
     
     // Historial de Ventas
     Route::get('/ventas', [App\Http\Controllers\Admin\HistorialVentaController::class, 'index'])->name('ventas.index');
+    Route::get('/ventas/{id}/detalle', [App\Http\Controllers\Admin\HistorialVentaController::class, 'getDetalle'])->name('ventas.detalle');
 
     // Reportes Financieros
     Route::get('/reportes/productos-vendidos', [App\Http\Controllers\Admin\ReporteController::class, 'productosVendidos'])->name('reportes.productos_vendidos');
@@ -77,6 +79,14 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Combos y Promociones
     Route::resource('combos', \App\Http\Controllers\Admin\ComboController::class);
     Route::post('/combos/{id}/toggle', [\App\Http\Controllers\Admin\ComboController::class, 'toggle'])->name('combos.toggle');
+
+    // SIAT Config
+    Route::get('/siat', [App\Http\Controllers\Admin\SiatConfigController::class, 'index'])->name('siat.index');
+    Route::put('/siat', [App\Http\Controllers\Admin\SiatConfigController::class, 'update'])->name('siat.update');
+    Route::get('/siat/test-connection', [App\Http\Controllers\Admin\SiatConfigController::class, 'testConnection'])->name('siat.test-connection');
+    Route::post('/siat/sync-catalogos', [App\Http\Controllers\Admin\SiatConfigController::class, 'syncCatalogos'])->name('siat.sync-catalogos');
+    Route::post('/siat/renew-cuis', [App\Http\Controllers\Admin\SiatConfigController::class, 'renewCuis'])->name('siat.renew-cuis');
+    Route::post('/siat/renew-cufd', [App\Http\Controllers\Admin\SiatConfigController::class, 'renewCufd'])->name('siat.renew-cufd');
 });
 
 // Grupo para el CAJERO
@@ -93,6 +103,9 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
 
     // Panel principal: comandas pendientes + mesas a cobrar
     Route::get('/', [CajeraController::class, 'dashboard'])->name('dashboard');
+    Route::get('/cajas-historial', [CajeraController::class, 'historialCajas'])->name('cajas.historial');
+    Route::get('/cajas/{id}/detalle', [CajeraController::class, 'getDetalleCaja'])->name('cajas.detalle');
+    Route::get('/ventas/{id}/detalle', [CajeraController::class, 'getDetalleVenta'])->name('ventas.detalle');
 
     // Ver e imprimir comanda a cocina
     Route::get('/comanda/{pedido_id}', [CajeraController::class, 'verComanda'])->name('comanda');
@@ -133,6 +146,17 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::get('/inventario', [CajeraController::class, 'inventario'])->name('inventario');
     Route::post('/inventario/agregar-stock/{id}', [CajeraController::class, 'agregarStock'])->name('inventario.agregar_stock');
     Route::post('/inventario/consumo-personal/{id}', [CajeraController::class, 'descontarConsumoPersonal'])->name('inventario.consumo_personal');
+    Route::post('/consumo-personal', [CajeraController::class, 'registrarConsumoPersonalDashboard'])->name('consumo_personal.registrar');
+
+    // Pedidos Para Llevar Rápidos
+    Route::get('/pedido-llevar/crear', [CajeraController::class, 'crearPedidoLlevar'])->name('pedido.llevar.crear');
+
+    // Gestión de Reservas
+    Route::get('/reservas', [CajeraController::class, 'listarReservas'])->name('reservas.index');
+    Route::post('/reservas', [CajeraController::class, 'guardarReserva'])->name('reservas.store');
+    Route::post('/reservas/{id}/asistir', [CajeraController::class, 'asistirReserva'])->name('reservas.asistir');
+    Route::post('/reservas/{id}/cancelar', [CajeraController::class, 'cancelarReserva'])->name('reservas.cancelar');
+    Route::delete('/reservas/{id}', [CajeraController::class, 'eliminarReserva'])->name('reservas.destroy');
 });
 
 // Grupo para el MESERO

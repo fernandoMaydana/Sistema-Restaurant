@@ -78,8 +78,9 @@ class CajaController extends Controller
         
         $resumenProductos = [];
         foreach ($facturas as $factura) {
+            if (!$factura->pedido) continue;
             foreach ($factura->pedido->detalles as $detalle) {
-                $catName = $detalle->producto->categoria->nombre ?? 'Sin Categoría';
+                $catName = $detalle->producto?->categoria?->nombre ?? 'Sin Categoría';
                 $prodName = $detalle->nombre_mostrar;
                 
                 if (!isset($resumenProductos[$catName])) {
@@ -141,8 +142,9 @@ class CajaController extends Controller
         
         $resumenProductos = [];
         foreach ($facturas as $factura) {
+            if (!$factura->pedido) continue;
             foreach ($factura->pedido->detalles as $detalle) {
-                $catName = $detalle->producto->categoria->nombre ?? 'Sin Categoría';
+                $catName = $detalle->producto?->categoria?->nombre ?? 'Sin Categoría';
                 $prodName = $detalle->nombre_mostrar;
                 
                 if (!isset($resumenProductos[$catName])) {
@@ -244,5 +246,93 @@ class CajaController extends Controller
         } catch (Exception $e) {
             return response()->json(['success' => false, 'message' => 'Error de impresora: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Retorna el detalle de la sesión de caja en formato JSON.
+     */
+    public function getDetalleCaja($id)
+    {
+        $caja = CajaSesion::with(['gastos', 'user'])->findOrFail($id);
+        
+        $facturas = Factura::with('pedido.detalles.producto.categoria')
+            ->where('estado', 'activa')
+            ->where('cajero_id', $caja->user_id)
+            ->where('created_at', '>=', $caja->fecha_apertura)
+            ->where('created_at', '<=', $caja->fecha_cierre ?? now())
+            ->get();
+            
+        $totalVentas = $facturas->sum('monto_pagado');
+        
+        $ventasPorMetodo = [
+            'efectivo' => 0,
+            'qr' => 0,
+            'tarjeta' => 0,
+            'transferencia' => 0
+        ];
+        
+        foreach ($facturas as $factura) {
+            $metodo = $factura->metodo_pago;
+            if (isset($ventasPorMetodo[$metodo])) {
+                $ventasPorMetodo[$metodo] += $factura->monto_pagado;
+            }
+        }
+        
+        $resumenProductos = [];
+        foreach ($facturas as $factura) {
+            if (!$factura->pedido) {
+                continue;
+            }
+            foreach ($factura->pedido->detalles as $detalle) {
+                $catName = $detalle->producto?->categoria?->nombre ?? 'Sin Categoría';
+                $prodName = $detalle->nombre_mostrar;
+                
+                if (!isset($resumenProductos[$catName])) {
+                    $resumenProductos[$catName] = [];
+                }
+ 
+                if (!isset($resumenProductos[$catName][$prodName])) {
+                    $resumenProductos[$catName][$prodName] = 0;
+                }
+ 
+                $resumenProductos[$catName][$prodName] += $detalle->cantidad;
+            }
+        }
+
+        // Aplanar el resumen de productos para facilidad de uso en front-end
+        $productosAplanados = [];
+        foreach ($resumenProductos as $categoria => $productos) {
+            foreach ($productos as $nombre => $cantidad) {
+                $productosAplanados[] = [
+                    'categoria' => $categoria,
+                    'nombre' => $nombre,
+                    'cantidad' => $cantidad
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'caja' => [
+                'id' => $caja->id,
+                'cajero_nombre' => $caja->user?->name ?? 'N/A',
+                'fecha_apertura' => \Carbon\Carbon::parse($caja->fecha_apertura)->format('d/m/Y H:i'),
+                'fecha_cierre' => $caja->fecha_cierre ? \Carbon\Carbon::parse($caja->fecha_cierre)->format('d/m/Y H:i') : 'En progreso',
+                'monto_inicial' => floatval($caja->monto_inicial),
+                'monto_final' => floatval($caja->monto_final ?? 0),
+                'estado' => $caja->estado,
+            ],
+            'total_ventas' => floatval($totalVentas),
+            'ventas_por_metodo' => array_map('floatval', $ventasPorMetodo),
+            'gastos' => $caja->gastos->map(function($gasto) {
+                return [
+                    'descripcion' => $gasto->descripcion,
+                    'monto' => floatval($gasto->monto),
+                    'hora' => $gasto->created_at->format('H:i')
+                ];
+            }),
+            'total_gastos' => floatval($caja->gastos->sum('monto')),
+            'resumen_productos' => $productosAplanados,
+        ]);
     }
 }

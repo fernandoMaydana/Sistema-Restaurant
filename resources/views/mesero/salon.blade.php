@@ -36,7 +36,7 @@
 
     {{-- Cuadrícula de mesas responsiva para móvil --}}
     <div class="row g-3 px-1">
-        @forelse($mesas as $mesa)
+        @forelse($mesas->where('es_para_llevar', false) as $mesa)
             @php
                 $pedidoActivo = $mesa->pedidos->first();
                 $libre = !$pedidoActivo;
@@ -102,7 +102,7 @@
     {{-- ═══════════════════════════════
          OFFCANVAS PARA MESAS OCUPADAS
     ═══════════════════════════════ --}}
-    @foreach($mesas as $mesa)
+    @foreach($mesas->where('es_para_llevar', false) as $mesa)
         @php $pedidoActivo = $mesa->pedidos->first(); @endphp
         @if($pedidoActivo)
             <div class="offcanvas offcanvas-bottom rounded-top-4" tabindex="-1" id="mesa-offcanvas-{{ $mesa->id }}" style="height: 80vh;">

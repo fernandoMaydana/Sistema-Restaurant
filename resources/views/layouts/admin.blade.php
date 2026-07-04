@@ -81,6 +81,14 @@
                             <i class="bi bi-exclamation-triangle text-danger me-2"></i> Stock Crítico
                         </a>
                     </li>
+                    <li class="nav-item mt-3">
+                        <span class="nav-link text-muted fw-bold text-uppercase px-3" style="font-size: 0.75rem;">Configuración</span>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {{ request()->routeIs('admin.siat.*') ? 'active fw-bold' : '' }}" href="{{ route('admin.siat.index') }}">
+                            <i class="bi bi-file-earmark-ruled text-primary me-2"></i> Facturación SIAT
+                        </a>
+                    </li>
                 </ul>
             </div>
         </div>

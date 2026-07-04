@@ -26,7 +26,7 @@ class StockController extends Controller
             ->whereIn('categoria_id', $categoryIds)
             ->where('usa_inventario', true)
             ->join('categorias', 'productos.categoria_id', '=', 'categorias.id')
-            ->orderByRaw("FIELD(categorias.nombre, 'Refrescos', 'Jugos', 'Cerveza', 'Bebidas')")
+            ->orderByRaw("CASE categorias.nombre WHEN 'Refrescos' THEN 1 WHEN 'Jugos' THEN 2 WHEN 'Cerveza' THEN 3 WHEN 'Bebidas' THEN 4 ELSE 5 END")
             ->orderBy('productos.nombre')
             ->select('productos.*')
             ->get();
@@ -96,20 +96,20 @@ class StockController extends Controller
             ->whereDate('facturas.created_at', '>=', $startOfMonth)
             ->select(
                 'pedido_detalles.producto_id',
-                DB::raw('DATE(facturas.created_at) as fecha'),
+                DB::raw('CAST(facturas.created_at AS date) as fecha'),
                 DB::raw('SUM(pedido_detalles.cantidad) as qty')
             )
-            ->groupBy('pedido_detalles.producto_id', DB::raw('DATE(facturas.created_at)'))
+            ->groupBy('pedido_detalles.producto_id', DB::raw('CAST(facturas.created_at AS date)'))
             ->get();
 
         $purchasesData = Compra::whereIn('producto_id', $targetProductIds)
             ->whereDate('created_at', '>=', $startOfMonth)
             ->select(
                 'producto_id',
-                DB::raw('DATE(created_at) as fecha'),
+                DB::raw('CAST(created_at AS date) as fecha'),
                 DB::raw('SUM(cantidad) as qty')
             )
-            ->groupBy('producto_id', DB::raw('DATE(created_at)'))
+            ->groupBy('producto_id', DB::raw('CAST(created_at AS date)'))
             ->get();
 
         // Consumos del personal (salidas internas)
@@ -117,10 +117,10 @@ class StockController extends Controller
             ->whereDate('created_at', '>=', $startOfMonth)
             ->select(
                 'producto_id',
-                DB::raw('DATE(created_at) as fecha'),
+                DB::raw('CAST(created_at AS date) as fecha'),
                 DB::raw('SUM(cantidad) as qty')
             )
-            ->groupBy('producto_id', DB::raw('DATE(created_at)'))
+            ->groupBy('producto_id', DB::raw('CAST(created_at AS date)'))
             ->get();
 
         // Mapear ventas y compras por producto y fecha

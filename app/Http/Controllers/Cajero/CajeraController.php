@@ -20,6 +20,13 @@ use Exception;
 
 class CajeraController extends Controller
 {
+    protected $siatService;
+
+    public function __construct(\App\Services\SiatService $siatService)
+    {
+        $this->siatService = $siatService;
+    }
+
     /**
      * Verifica si el cajero tiene una sesión de caja abierta para hoy.
      */
@@ -101,6 +108,17 @@ class CajeraController extends Controller
             $totalGastosHoy = 0;
         }
 
+        $productosInventario = Producto::where('usa_inventario', true)
+            ->where('disponible', true)
+            ->where('stock', '>', 0)
+            ->orderBy('nombre')
+            ->get();
+
+        $consumosHoy = ConsumoPersonal::with('producto')
+            ->whereDate('created_at', today())
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return view('cajero.dashboard', compact(
             'pedidosConComandaPendiente', 
             'mesasParaCobrar', 
@@ -108,7 +126,9 @@ class CajeraController extends Controller
             'facturasHoy',
             'gastosHoy',
             'totalGastosHoy',
-            'caja'
+            'caja',
+            'productosInventario',
+            'consumosHoy'
         ));
     }
  
@@ -256,8 +276,13 @@ class CajeraController extends Controller
         }])->with(['pedidos' => function ($q) {
             $q->whereIn('estado', ['abierto', 'cuenta_solicitada'])->with('detalles.producto')->latest();
         }])->orderBy('numero')->get();
+
+        // Obtener las reservas del día
+        $reservas = \App\Models\Reserva::whereDate('fecha', today())
+            ->whereIn('estado', ['pendiente', 'asistida'])
+            ->get();
  
-        return view('cajero.salon', compact('mesas'));
+        return view('cajero.salon', compact('mesas', 'reservas'));
     }
 
     /**
@@ -359,6 +384,14 @@ class CajeraController extends Controller
             $pedido->update(['total' => $total ?? 0]);
         });
  
+        if ($mesa->es_para_llevar) {
+            $pedido = Pedido::where('mesa_id', $mesa->id)->whereIn('estado', ['abierto', 'cuenta_solicitada'])->first();
+            if ($pedido) {
+                return redirect()->route('cajero.cobrar', $pedido->id)
+                    ->with('success', "✅ Pedido para Llevar registrado. Procede a cobrar.");
+            }
+        }
+
         return redirect()->route('cajero.salon')
             ->with('success', "✅ Pedido actualizado para Mesa {$mesa->numero}.");
     }
@@ -459,6 +492,14 @@ class CajeraController extends Controller
                 $pedido->update(['total' => $total]);
             }
         });
+
+        if ($mesa->es_para_llevar) {
+            $pedido = Pedido::where('mesa_id', $mesa->id)->whereIn('estado', ['abierto', 'cuenta_solicitada'])->first();
+            if ($pedido) {
+                return redirect()->route('cajero.cobrar', $pedido->id)
+                    ->with('success', "✅ Pedido para Llevar guardado. Procede con el cobro.");
+            }
+        }
 
         return redirect()->route('cajero.salon')
             ->with('success', "✅ Mesa {$mesa->numero} actualizada correctamente.");
@@ -625,13 +666,23 @@ class CajeraController extends Controller
             }
             $printer->setTextSize(4, 4); // Más grande y llamativo
             if ($pedido->mesa->es_para_llevar) {
-                $printer->text("LLEVAR " . $pedido->mesa->numero . "\n");
+                $printer->text("LLEVAR\n");
             } else {
                 $printer->text("MESA " . $pedido->mesa->numero . "\n");
             }
             $printer->setTextSize(1, 1);
             $printer->text(str_repeat("-", $cols) . "\n");
-            $printer->text("Mesero: " . strtoupper($pedido->mesero->name) . "\n");
+            
+            if ($pedido->mesa->es_para_llevar) {
+                // Cargar la relación factura si no está cargada
+                if (!$pedido->relationLoaded('factura')) {
+                    $pedido->load('factura');
+                }
+                $clienteNombre = $pedido->factura ? strtoupper($pedido->factura->cliente_nombre) : 'GENERAL';
+                $printer->text("Cliente: " . $clienteNombre . "\n");
+            } else {
+                $printer->text("Mesero: " . strtoupper($pedido->mesero->name) . "\n");
+            }
             $printer->text("Fecha: " . now()->format('d/m/Y H:i') . "\n");
             $printer->text(str_repeat("-", $cols) . "\n\n");
 
@@ -805,6 +856,14 @@ class CajeraController extends Controller
             $printer->text("RESTAURANTE PROFESIONAL\n");
             $printer->setEmphasis(false);
             $printer->text("SISTEMA DE GESTION GASTRONOMICA\n");
+            
+            if ($factura->cuf) {
+                $printer->text("NIT: " . ($this->siatService->getConfig()->nit ?? '1020304050') . "\n");
+                $printer->text("FACTURA EN LINEA\n");
+            } else {
+                $printer->text("TICKET DE VENTA\n");
+            }
+            
             $printer->setTextSize(2, 2);
             $printer->text("FACTURA\n");
             $printer->setTextSize(1, 1);
@@ -812,7 +871,13 @@ class CajeraController extends Controller
             
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $printer->text("Fecha: " . $factura->created_at->format('d/m/Y H:i:s') . "\n");
-            $printer->text("Nro. Factura: #" . str_pad($factura->id, 6, '0', STR_PAD_LEFT) . "\n");
+            
+            if ($factura->cuf) {
+                $printer->text("Nro. Factura: " . ($factura->numero_factura_siat ?? $factura->id) . "\n");
+            } else {
+                $printer->text("Nro. Factura: #" . str_pad($factura->id, 6, '0', STR_PAD_LEFT) . "\n");
+            }
+            
             $printer->text("Cajero: " . strtoupper($factura->cajero->name) . "\n");
             if ($factura->pedido->mesa->es_para_llevar) {
                 $printer->text("Pedido: Llevar #" . $factura->pedido->mesa->numero . "\n");
@@ -822,6 +887,11 @@ class CajeraController extends Controller
             $printer->text(str_repeat("-", $cols) . "\n");
             $printer->text("CLIENTE: " . strtoupper($factura->cliente_nombre ?? 'CONSUMIDOR FINAL') . "\n");
             $printer->text("NIT/CI: " . ($factura->cliente_nit_ci ?? '-----------') . "\n");
+            
+            if ($factura->cuf) {
+                $printer->text("CUF: " . wordwrap($factura->cuf, $cols - 5, "\n     ", true) . "\n");
+            }
+            
             $printer->text(str_repeat("-", $cols) . "\n\n");
 
             // Detalles
@@ -856,8 +926,25 @@ class CajeraController extends Controller
             // Pie de pagina
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->text("\n" . str_repeat("-", $cols) . "\n");
-            $printer->text("GRACIAS POR SU PREFERENCIA\n");
-            $printer->text("PROVEA ESTE TICKET PARA RECLAMOS\n");
+            
+            if ($factura->cuf) {
+                $printer->setEmphasis(true);
+                $printer->text("ESTA FACTURA CONTRIBUYE AL DESARROLLO DEL PAIS, EL USO ILICITO DE ESTA SERA SANCIONADO DE ACUERDO A LEY\n\n");
+                $printer->setEmphasis(false);
+                $printer->text(wordwrap($factura->leyenda_sin ?? 'Ley N° 453: Tienes derecho a recibir información sobre las características y contenidos de los servicios que utilices.', $cols, "\n", true) . "\n\n");
+
+                // Generar QR para el SIN
+                $config = $this->siatService->getConfig();
+                $nit = $config->nit ?? '1020304050';
+                $qrUrl = "https://siat.impuestos.gob.bo/consulta/QR?nit={$nit}&cuf={$factura->cuf}&numero={$factura->numero_factura_siat}&t=1";
+                
+                $printer->qrCode($qrUrl, Printer::QR_ECLEVEL_L, 4);
+                $printer->text("\nEscanea para verificar la factura digital\n");
+            } else {
+                $printer->text("GRACIAS POR SU PREFERENCIA\n");
+                $printer->text("PROVEA ESTE TICKET PARA RECLAMOS\n");
+            }
+            
             $printer->text("*** RESTO-SISTEMA ***\n\n\n");
 
             // Abrir cajón y cortar
@@ -1054,7 +1141,7 @@ class CajeraController extends Controller
         $resumenProductos = [];
         foreach ($facturas as $factura) {
             foreach ($factura->pedido->detalles as $detalle) {
-                $catName = $detalle->producto->categoria->nombre ?? 'Sin Categoría';
+                $catName = $detalle->producto?->categoria?->nombre ?? 'Sin Categoría';
                 $prodName = $detalle->nombre_mostrar;
                 
                 if (!isset($resumenProductos[$catName])) {
@@ -1133,30 +1220,57 @@ class CajeraController extends Controller
                 ->with('error', 'Este pedido ya fue pagado.');
         }
 
-        $factura = DB::transaction(function () use ($request, $pedido) {
-            $montoFinal = $pedido->total;
+        try {
+            $factura = DB::transaction(function () use ($request, $pedido) {
+                $montoFinal = $pedido->total;
 
-            // 1. Crear la factura
-            $f = Factura::create([
-                'pedido_id'         => $pedido->id,
-                'cajero_id'         => auth()->id(),
-                'cliente_nombre'    => $request->cliente_nombre,
-                'cliente_nit_ci'    => $request->cliente_nit_ci,
-                'monto_pagado'      => $montoFinal, // Guardamos el total neto
-                'descuento'         => 0,
-                'recargo'           => 0,
-                'efectivo_recibido' => $request->monto_pagado, // Guardamos el efectivo recibido del cliente
-                'metodo_pago'       => $request->metodo_pago,
-            ]);
+                // 1. Crear la factura localmente
+                $f = Factura::create([
+                    'pedido_id'         => $pedido->id,
+                    'cajero_id'         => auth()->id(),
+                    'cliente_nombre'    => $request->cliente_nombre ?? 'CONSUMIDOR FINAL',
+                    'cliente_nit_ci'    => $request->cliente_nit_ci ?? '99001',
+                    'monto_pagado'      => $montoFinal, // Guardamos el total neto
+                    'descuento'         => 0,
+                    'recargo'           => 0,
+                    'efectivo_recibido' => $request->monto_pagado, // Guardamos el efectivo recibido del cliente
+                    'metodo_pago'       => $request->metodo_pago,
+                ]);
 
-            // 2. Cerrar el pedido
-            $pedido->update(['estado' => 'pagado']);
+                // 2. Si SIAT está habilitado, procesar la facturación en línea
+                if ($this->siatService->isEnabled()) {
+                    $siatResult = $this->siatService->enviarFactura($f);
 
-            // 3. Liberar la mesa
-            $pedido->mesa->update(['estado' => 'libre']);
+                    if (!$siatResult['success']) {
+                        throw new Exception($siatResult['mensaje']);
+                    }
 
-            return $f;
-        });
+                    // Guardar campos SIAT devueltos
+                    $f->update([
+                        'cuf' => $siatResult['cuf'],
+                        'cufd_codigo' => $siatResult['cufd_codigo'],
+                        'numero_factura_siat' => $siatResult['numero_factura_siat'],
+                        'estado_siat' => $siatResult['estado_siat'],
+                        'codigo_recepcion' => $siatResult['codigo_recepcion'],
+                        'leyenda_sin' => $siatResult['leyenda_sin'],
+                        'xml_path' => $siatResult['xml_path'],
+                    ]);
+                }
+
+                // 3. Cerrar el pedido
+                $pedido->update(['estado' => 'pagado']);
+
+                // 4. Liberar la mesa
+                $pedido->mesa->update(['estado' => 'libre']);
+
+                return $f;
+            });
+        } catch (Exception $e) {
+            \Log::error("Error al procesar pago con SIAT: " . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', '⚠️ Error al emitir Factura SIAT: ' . $e->getMessage());
+        }
 
         return redirect()->route('cajero.factura', $factura->id)
             ->with('success', "Pago procesado correctamente. Mesa {$pedido->mesa->numero} liberada.");
@@ -1188,17 +1302,28 @@ class CajeraController extends Controller
             return redirect()->back()->with('error', 'Esta factura ya está anulada.');
         }
 
-        DB::transaction(function () use ($factura) {
-            $factura->update(['estado' => 'anulada']);
-            
-            // Devolver stock de todos los items
-            foreach ($factura->pedido->detalles as $detalle) {
-                $producto = Producto::find($detalle->producto_id);
-                if ($producto && $producto->usa_inventario) {
-                    $producto->increment('stock', $detalle->cantidad);
+        try {
+            DB::transaction(function () use ($factura) {
+                // Si la factura fue enviada al SIAT, intentar anularla en Impuestos
+                if ($this->siatService->isEnabled() && $factura->cuf && in_array($factura->estado_siat, ['enviada', 'pendiente'])) {
+                    $this->siatService->anularFactura($factura, 1); // 1 = Factura Mal Emitida
+                    $factura->update(['estado_siat' => 'anulada_siat']);
                 }
-            }
-        });
+
+                $factura->update(['estado' => 'anulada']);
+                
+                // Devolver stock de todos los items
+                foreach ($factura->pedido->detalles as $detalle) {
+                    $producto = Producto::find($detalle->producto_id);
+                    if ($producto && $producto->usa_inventario) {
+                        $producto->increment('stock', $detalle->cantidad);
+                    }
+                }
+            });
+        } catch (Exception $e) {
+            \Log::error("Error al anular factura en SIAT: " . $e->getMessage());
+            return redirect()->back()->with('error', '⚠️ Error al anular factura en el SIAT: ' . $e->getMessage());
+        }
 
         return redirect()->back()->with('success', '✅ La venta ha sido anulada con éxito. Se ha descontado de los reportes de caja de hoy.');
     }
@@ -1261,6 +1386,41 @@ class CajeraController extends Controller
         ]);
 
         $producto = Producto::findOrFail($id);
+
+        if (!$producto->usa_inventario) {
+            return redirect()->back()->with('error', 'El producto seleccionado no maneja inventario.');
+        }
+
+        if ($producto->stock < $request->cantidad) {
+            return redirect()->back()->with('error', "No hay suficiente stock para descontar. Stock disponible: {$producto->stock} ud.");
+        }
+
+        // Descontar stock
+        $producto->decrement('stock', $request->cantidad);
+
+        // Registrar consumo del personal
+        ConsumoPersonal::create([
+            'producto_id' => $producto->id,
+            'user_id'     => auth()->id(),
+            'cantidad'    => $request->cantidad,
+            'descripcion' => $request->descripcion,
+        ]);
+
+        return redirect()->back()->with('success', '✅ Consumo del personal registrado. Se descontaron ' . $request->cantidad . ' ud. de "' . $producto->nombre . '" (Stock restante: ' . $producto->fresh()->stock . ').');
+    }
+
+    /**
+     * Registrar consumo del personal desde el dashboard de caja.
+     */
+    public function registrarConsumoPersonalDashboard(Request $request)
+    {
+        $request->validate([
+            'producto_id' => 'required|exists:productos,id',
+            'cantidad'    => 'required|integer|min:1',
+            'descripcion' => 'nullable|string|max:255',
+        ]);
+
+        $producto = Producto::findOrFail($request->producto_id);
 
         if (!$producto->usa_inventario) {
             return redirect()->back()->with('error', 'El producto seleccionado no maneja inventario.');
@@ -1361,69 +1521,97 @@ class CajeraController extends Controller
         }
 
         // Procesar DB Transaction
-        $factura = DB::transaction(function () use ($request, $pedidoOriginal, $itemsProcesables, $totalDividir) {
-            $montoFinal = $totalDividir;
+        try {
+            $factura = DB::transaction(function () use ($request, $pedidoOriginal, $itemsProcesables, $totalDividir) {
+                $montoFinal = $totalDividir;
 
-            // 1. Crear un pedido nuevo paralelo para la parte pagada
-            $pedidoNuevo = Pedido::create([
-                'mesa_id' => $pedidoOriginal->mesa_id,
-                'mesero_id' => $pedidoOriginal->mesero_id,
-                'estado' => 'pagado',
-                'total' => $montoFinal
-            ]);
-
-            // 2. Transferir/descontar los items
-            foreach ($itemsProcesables as $proc) {
-                $det = $proc['detalle'];
-                $cant = $proc['cantidad'];
-
-                // Crear detalle en el nuevo pedido
-                PedidoDetalle::create([
-                    'pedido_id' => $pedidoNuevo->id,
-                    'producto_id' => $det->producto_id,
-                    'cantidad' => $cant,
-                    'precio_unitario' => $det->precio_unitario,
-                    'estado_comanda' => 'impreso',
+                // 1. Crear un pedido nuevo paralelo para la parte pagada
+                $pedidoNuevo = Pedido::create([
+                    'mesa_id' => $pedidoOriginal->mesa_id,
+                    'mesero_id' => $pedidoOriginal->mesero_id,
+                    'estado' => 'pagado',
+                    'total' => $montoFinal
                 ]);
 
-                // Descontar del original
-                if ($cant === $det->cantidad) {
-                    $det->delete();
-                } else {
-                    $det->decrement('cantidad', $cant);
+                // 2. Transferir/descontar los items
+                foreach ($itemsProcesables as $proc) {
+                    $det = $proc['detalle'];
+                    $cant = $proc['cantidad'];
+
+                    // Crear detalle en el nuevo pedido
+                    PedidoDetalle::create([
+                        'pedido_id' => $pedidoNuevo->id,
+                        'producto_id' => $det->producto_id,
+                        'badge' => $det->badge,
+                        'cantidad' => $cant,
+                        'precio_unitario' => $det->precio_unitario,
+                        'estado_comanda' => 'impreso',
+                    ]);
+
+                    // Descontar del original
+                    if ($cant === $det->cantidad) {
+                        $det->delete();
+                    } else {
+                        $det->decrement('cantidad', $cant);
+                    }
                 }
-            }
 
-            // 3. Recalcular total del pedido original
-            $totalRestante = PedidoDetalle::where('pedido_id', $pedidoOriginal->id)
-                ->selectRaw('SUM(cantidad * precio_unitario) as total')
-                ->value('total');
+                // 3. Recalcular total del pedido original
+                $totalRestante = PedidoDetalle::where('pedido_id', $pedidoOriginal->id)
+                    ->selectRaw('SUM(cantidad * precio_unitario) as total')
+                    ->value('total');
 
-            if (!$totalRestante || $totalRestante <= 0) {
-                // Si ya no queda nada, marcamos el original como pagado y liberamos mesa
-                $pedidoOriginal->update(['estado' => 'pagado', 'total' => 0]);
-                $pedidoOriginal->mesa->update(['estado' => 'libre']);
-                // Eliminar el pedido original vacío para no ensuciar reportes
-                $pedidoOriginal->delete();
-            } else {
-                $pedidoOriginal->update(['total' => $totalRestante]);
-            }
+                if (!$totalRestante || $totalRestante <= 0) {
+                    // Si ya no queda nada, marcamos el original como pagado y liberamos mesa
+                    $pedidoOriginal->update(['estado' => 'pagado', 'total' => 0]);
+                    $pedidoOriginal->mesa->update(['estado' => 'libre']);
+                    // Eliminar el pedido original vacío para no ensuciar reportes
+                    $pedidoOriginal->delete();
+                } else {
+                    $pedidoOriginal->update(['total' => $totalRestante]);
+                }
 
-            // 4. Crear la factura para el pedido dividido
-            $f = Factura::create([
-                'pedido_id' => $pedidoNuevo->id,
-                'cajero_id' => auth()->id(),
-                'cliente_nombre' => $request->cliente_nombre,
-                'cliente_nit_ci' => $request->cliente_nit_ci,
-                'monto_pagado' => $montoFinal,
-                'descuento' => 0,
-                'recargo' => 0,
-                'efectivo_recibido' => $request->monto_pagado,
-                'metodo_pago' => $request->metodo_pago,
-            ]);
+                // 4. Crear la factura para el pedido dividido
+                $f = Factura::create([
+                    'pedido_id' => $pedidoNuevo->id,
+                    'cajero_id' => auth()->id(),
+                    'cliente_nombre' => $request->cliente_nombre ?? 'CONSUMIDOR FINAL',
+                    'cliente_nit_ci' => $request->cliente_nit_ci ?? '99001',
+                    'monto_pagado' => $montoFinal,
+                    'descuento' => 0,
+                    'recargo' => 0,
+                    'efectivo_recibido' => $request->monto_pagado,
+                    'metodo_pago' => $request->metodo_pago,
+                ]);
 
-            return $f;
-        });
+                // 5. Si SIAT está habilitado, procesar la facturación en línea
+                if ($this->siatService->isEnabled()) {
+                    $siatResult = $this->siatService->enviarFactura($f);
+
+                    if (!$siatResult['success']) {
+                        throw new Exception($siatResult['mensaje']);
+                    }
+
+                    // Guardar campos SIAT devueltos
+                    $f->update([
+                        'cuf' => $siatResult['cuf'],
+                        'cufd_codigo' => $siatResult['cufd_codigo'],
+                        'numero_factura_siat' => $siatResult['numero_factura_siat'],
+                        'estado_siat' => $siatResult['estado_siat'],
+                        'codigo_recepcion' => $siatResult['codigo_recepcion'],
+                        'leyenda_sin' => $siatResult['leyenda_sin'],
+                        'xml_path' => $siatResult['xml_path'],
+                    ]);
+                }
+
+                return $f;
+            });
+        } catch (Exception $e) {
+            \Log::error("Error al procesar división de pago con SIAT: " . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', '⚠️ Error al emitir Factura SIAT: ' . $e->getMessage());
+        }
 
         $pedidoOriginalExiste = Pedido::find($pedido_id);
 
@@ -1434,5 +1622,286 @@ class CajeraController extends Controller
 
         return redirect()->route('cajero.factura', $factura->id)
             ->with('success', "✅ Cuenta dividida y pago procesado correctamente (Mesa totalmente cobrada y liberada).");
+    }
+
+    /**
+     * Muestra el historial de cajas del propio cajero.
+     */
+    public function historialCajas(Request $request)
+    {
+        $query = CajaSesion::where('user_id', auth()->id())->orderBy('created_at', 'desc');
+
+        if ($request->filled('fecha_especifica')) {
+            $query->whereDate('fecha_apertura', $request->fecha_especifica);
+        } else {
+            if ($request->filled('fecha_desde')) {
+                $query->whereDate('fecha_apertura', '>=', $request->fecha_desde);
+            }
+            if ($request->filled('fecha_hasta')) {
+                $query->whereDate('fecha_apertura', '<=', $request->fecha_hasta);
+            }
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        $cajas = $query->paginate(15)->withQueryString();
+
+        return view('cajero.cajas_historial', compact('cajas'));
+    }
+
+    /**
+     * Retorna el detalle de la sesión de caja en formato JSON (solo si le pertenece al cajero).
+     */
+    public function getDetalleCaja($id)
+    {
+        $caja = CajaSesion::where('user_id', auth()->id())->with(['gastos', 'user'])->findOrFail($id);
+        
+        $facturas = Factura::with('pedido.detalles.producto.categoria')
+            ->where('estado', 'activa')
+            ->where('cajero_id', $caja->user_id)
+            ->where('created_at', '>=', $caja->fecha_apertura)
+            ->where('created_at', '<=', $caja->fecha_cierre ?? now())
+            ->get();
+            
+        $totalVentas = $facturas->sum('monto_pagado');
+        
+        $ventasPorMetodo = [
+            'efectivo' => 0,
+            'qr' => 0,
+            'tarjeta' => 0,
+            'transferencia' => 0
+        ];
+        
+        foreach ($facturas as $factura) {
+            $metodo = $factura->metodo_pago;
+            if (isset($ventasPorMetodo[$metodo])) {
+                $ventasPorMetodo[$metodo] += $factura->monto_pagado;
+            }
+        }
+        
+        $resumenProductos = [];
+        foreach ($facturas as $factura) {
+            if (!$factura->pedido) {
+                continue;
+            }
+            foreach ($factura->pedido->detalles as $detalle) {
+                $catName = $detalle->producto?->categoria?->nombre ?? 'Sin Categoría';
+                $prodName = $detalle->nombre_mostrar;
+                
+                if (!isset($resumenProductos[$catName])) {
+                    $resumenProductos[$catName] = [];
+                }
+ 
+                if (!isset($resumenProductos[$catName][$prodName])) {
+                    $resumenProductos[$catName][$prodName] = 0;
+                }
+ 
+                $resumenProductos[$catName][$prodName] += $detalle->cantidad;
+            }
+        }
+
+        // Aplanar el resumen de productos para facilidad de uso en front-end
+        $productosAplanados = [];
+        foreach ($resumenProductos as $categoria => $productos) {
+            foreach ($productos as $nombre => $cantidad) {
+                $productosAplanados[] = [
+                    'categoria' => $categoria,
+                    'nombre' => $nombre,
+                    'cantidad' => $cantidad
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'caja' => [
+                'id' => $caja->id,
+                'cajero_nombre' => $caja->user?->name ?? 'N/A',
+                'fecha_apertura' => \Carbon\Carbon::parse($caja->fecha_apertura)->format('d/m/Y H:i'),
+                'fecha_cierre' => $caja->fecha_cierre ? \Carbon\Carbon::parse($caja->fecha_cierre)->format('d/m/Y H:i') : 'En progreso',
+                'monto_inicial' => floatval($caja->monto_inicial),
+                'monto_final' => floatval($caja->monto_final ?? 0),
+                'estado' => $caja->estado,
+            ],
+            'total_ventas' => floatval($totalVentas),
+            'ventas_por_metodo' => array_map('floatval', $ventasPorMetodo),
+            'gastos' => $caja->gastos->map(function($gasto) {
+                return [
+                    'descripcion' => $gasto->descripcion,
+                    'monto' => floatval($gasto->monto),
+                    'hora' => $gasto->created_at->format('H:i')
+                ];
+            }),
+            'total_gastos' => floatval($caja->gastos->sum('monto')),
+            'resumen_productos' => $productosAplanados,
+        ]);
+    }
+
+    /**
+     * Retorna el detalle de los productos consumidos en una factura específica en formato JSON.
+     */
+    public function getDetalleVenta($id)
+    {
+        $factura = Factura::with(['pedido.detalles.producto', 'pedido.mesa', 'cajero'])->findOrFail($id);
+        
+        $detalles = [];
+        if ($factura->pedido) {
+            foreach ($factura->pedido->detalles as $det) {
+                $detalles[] = [
+                    'cantidad' => $det->cantidad,
+                    'producto_nombre' => $det->nombre_mostrar,
+                    'precio_unitario' => floatval($det->precio_unitario),
+                    'subtotal' => floatval($det->cantidad * $det->precio_unitario),
+                    'notas' => $det->notas
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'factura' => [
+                'id' => $factura->id,
+                'fecha' => $factura->created_at->format('d/m/Y H:i'),
+                'mesa_numero' => $factura->pedido?->mesa?->numero ?? 'N/A',
+                'cliente_nombre' => $factura->cliente_nombre ?? 'Consumidor Final',
+                'cliente_nit_ci' => $factura->cliente_nit_ci ?? 'S/N',
+                'metodo_pago' => ucfirst($factura->metodo_pago),
+                'cajero_nombre' => $factura->cajero?->name ?? 'N/A',
+                'monto_pagado' => floatval($factura->monto_pagado),
+                'estado' => $factura->estado,
+            ],
+            'detalles' => $detalles
+        ]);
+    }
+
+    /**
+     * Crea un pedido para llevar rápido.
+     */
+    public function crearPedidoLlevar()
+    {
+        if (!$this->obtenerCajaAbierta()) {
+            return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para crear pedidos.');
+        }
+
+        // Buscar una mesa libre que sea para llevar
+        $mesa = Mesa::where('es_para_llevar', true)
+            ->whereDoesntHave('pedidos', function ($q) {
+                $q->whereIn('estado', ['abierto', 'cuenta_solicitada']);
+            })->first();
+
+        if (!$mesa) {
+            // Si no hay mesa libre, crear una automáticamente en la BD
+            $maxMesaNumero = Mesa::max('numero') ?? 0;
+            $mesa = Mesa::create([
+                'numero' => $maxMesaNumero + 1,
+                'capacidad' => 1,
+                'estado' => 'libre',
+                'es_para_llevar' => true
+            ]);
+        }
+
+        return redirect()->route('cajero.mesa', $mesa->id);
+    }
+
+    /**
+     * Obtiene y devuelve las reservas del día en formato JSON.
+     */
+    public function listarReservas()
+    {
+        $reservas = \App\Models\Reserva::with('mesa')
+            ->whereDate('fecha', today())
+            ->orderBy('hora')
+            ->get();
+
+        return response()->json($reservas);
+    }
+
+    /**
+     * Guarda una nueva reserva.
+     */
+    public function guardarReserva(Request $request)
+    {
+        $request->validate([
+            'cliente_nombre' => 'required|string|max:255',
+            'cliente_telefono' => 'nullable|string|max:50',
+            'fecha' => 'required|date',
+            'hora' => 'required',
+            'cantidad_personas' => 'required|integer|min:1',
+            'mesa_id' => 'nullable|exists:mesas,id',
+            'notas' => 'nullable|string|max:500',
+        ]);
+
+        $reserva = \App\Models\Reserva::create([
+            'cliente_nombre' => $request->cliente_nombre,
+            'cliente_telefono' => $request->cliente_telefono,
+            'fecha' => $request->fecha,
+            'hora' => $request->hora,
+            'cantidad_personas' => $request->cantidad_personas,
+            'mesa_id' => $request->mesa_id,
+            'notas' => $request->notas,
+            'estado' => 'pendiente'
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserva registrada con éxito.',
+            'reserva' => $reserva
+        ]);
+    }
+
+    /**
+     * Marca una reserva como Asistida.
+     */
+    public function asistirReserva($id)
+    {
+        $reserva = \App\Models\Reserva::findOrFail($id);
+        $reserva->update(['estado' => 'asistida']);
+
+        // Opcional: Si tiene mesa asignada, podemos redirigir a tomar el pedido de esa mesa
+        if ($reserva->mesa_id) {
+            $mesa = Mesa::find($reserva->mesa_id);
+            if ($mesa && $mesa->estado === 'libre') {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Reserva marcada como Asistida.',
+                    'redirect_to' => route('cajero.mesa', $reserva->mesa_id)
+                ]);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserva marcada como Asistida.'
+        ]);
+    }
+
+    /**
+     * Cancela una reserva.
+     */
+    public function cancelarReserva($id)
+    {
+        $reserva = \App\Models\Reserva::findOrFail($id);
+        $reserva->update(['estado' => 'cancelada']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserva cancelada.'
+        ]);
+    }
+
+    /**
+     * Elimina una reserva.
+     */
+    public function eliminarReserva($id)
+    {
+        $reserva = \App\Models\Reserva::findOrFail($id);
+        $reserva->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reserva eliminada con éxito.'
+        ]);
     }
 }

@@ -19,6 +19,19 @@
             </div>
 
             <div class="mb-3">
+                <label>Producto Homologado SIN (Facturación en Línea)</label>
+                <select name="codigo_sin" class="form-control">
+                    <option value="">-- Sin Homologación (Por defecto 57111 - Servicios de comida) --</option>
+                    @foreach($siatProductos as $siatProd)
+                        <option value="{{ $siatProd->codigo_producto }}" {{ old('codigo_sin', $producto->codigo_sin) == $siatProd->codigo_producto ? 'selected' : '' }}>
+                            {{ $siatProd->codigo_producto }} - {{ $siatProd->descripcion }}
+                        </option>
+                    @endforeach
+                </select>
+                <small class="text-muted">Asigna este código para la facturación digital de Impuestos Nacionales.</small>
+            </div>
+
+            <div class="mb-3">
                 <label>Nombre del Producto</label>
                 <input type="text" name="nombre" class="form-control" required value="{{ old('nombre', $producto->nombre) }}">
             </div>

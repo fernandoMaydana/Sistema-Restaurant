@@ -126,6 +126,41 @@
                 </div>
              </div>
         </div>
+        <div class="col-md-6 mb-4">
+             <div class="card shadow-sm border-0 h-100">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-dark"><i class="bi bi-people-fill me-2 text-warning"></i>Consumo del Personal</h5>
+                    @if($caja)
+                        <button class="btn btn-warning btn-sm text-white fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#modalConsumo">
+                            <i class="bi bi-plus-circle me-1"></i>Registrar Consumo
+                        </button>
+                    @else
+                        <button class="btn btn-secondary btn-sm rounded-pill px-3" disabled title="Debe abrir caja primero para registrar consumos de personal">
+                            <i class="bi bi-plus-circle me-1"></i>Registrar Consumo
+                        </button>
+                    @endif
+                </div>
+                <div class="card-body p-0 overflow-auto" style="max-height: 300px;">
+                    <ul class="list-group list-group-flush">
+                        @forelse($consumosHoy as $consumo)
+                            <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-3">
+                                <div>
+                                    <span class="fw-bold text-dark">{{ $consumo->producto->nombre ?? 'Producto Eliminado' }}</span>
+                                    <span class="badge bg-light text-dark border ms-1">x{{ $consumo->cantidad }}</span>
+                                    @if($consumo->descripcion)
+                                        <br><small class="text-muted">{{ $consumo->descripcion }}</small>
+                                    @endif
+                                    <br><small class="text-muted" style="font-size: 0.7rem;">{{ $consumo->created_at->format('H:i') }}</small>
+                                </div>
+                                <span class="text-warning fw-bold">-{{ $consumo->cantidad }} ud.</span>
+                            </li>
+                        @empty
+                            <li class="list-group-item text-center py-5 text-muted">No hay consumos de personal registrados hoy.</li>
+                        @endforelse
+                    </ul>
+                </div>
+             </div>
+        </div>
     </div>
 
     {{-- ══════════════════════════════════════
@@ -154,7 +189,7 @@
                                 @forelse($facturasHoy as $factura)
                                     <tr class="{{ $factura->estado === 'anulada' ? 'table-danger opacity-75' : '' }}">
                                         <td class="ps-3 text-muted">{{ $factura->created_at->format('H:i') }}</td>
-                                        <td class="fw-bold">Mesa {{ $factura->pedido->mesa->numero ?? 'N/A' }}</td>
+                                        <td class="fw-bold">Mesa {{ $factura->pedido?->mesa?->numero ?? 'N/A' }}</td>
                                         <td>
                                             <div class="d-flex flex-column">
                                                 <span class="fw-medium text-dark {{ $factura->estado === 'anulada' ? 'text-decoration-line-through text-muted' : '' }}">{{ $factura->cliente_nombre ?? 'Consumidor Final' }}</span>
@@ -173,6 +208,9 @@
                                             <span class="badge bg-secondary text-uppercase">{{ $factura->metodo_pago }}</span>
                                         </td>
                                         <td class="text-end pe-3">
+                                            <button type="button" onclick="verDetalleFactura({{ $factura->id }}, '{{ route('cajero.ventas.detalle', $factura->id, false) }}')" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1" title="Ver Detalle">
+                                                <i class="bi bi-eye-fill me-1"></i>Detalle
+                                            </button>
                                             @if($factura->estado === 'activa')
                                                 <form action="{{ route('cajero.factura.anular', $factura->id) }}" method="POST" class="d-inline swal-confirm-form"
                                                       data-swal-title="¿Anular Venta?"
@@ -184,7 +222,7 @@
                                                         <i class="bi bi-x-circle me-1"></i>Anular Venta
                                                     </button>
                                                 </form>
-                                                <button type="button" onclick="imprimirFacturaDirecta(event, '{{ route('cajero.api.imprimir.factura', $factura->id) }}')" class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btn-imprimir-hist-{{ $factura->id }}">
+                                                <button type="button" onclick="imprimirFacturaDirecta(event, '{{ route('cajero.api.imprimir.factura', $factura->id, false) }}')" class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btn-imprimir-hist-{{ $factura->id }}">
                                                     <i class="bi bi-printer me-1"></i>Imprimir Ticket
                                                 </button>
                                             @else
@@ -217,7 +255,7 @@
         textSpan.innerHTML = '<span class="spinner-border spinner-border-sm text-secondary me-1" role="status"></span>Verificando conexión...';
         icon.className = 'bi bi-printer text-muted fs-4';
         
-        fetch('{{ route('cajero.api.check-printer') }}')
+        fetch('{{ route('cajero.api.check-printer', [], false) }}')
         .then(r => r.json())
         .then(data => {
             if (data.connected) {
@@ -287,6 +325,36 @@
             btn.disabled = false;
         });
     }
+
+    // Configuración para el modal de consumo
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectProd = document.getElementById('consumo_producto_id');
+        const inputCant = document.getElementById('dashboardConsumoCantidad');
+        const stockLabel = document.getElementById('stock_disponible_label');
+
+        if (selectProd) {
+            selectProd.addEventListener('change', function() {
+                const selectedOpt = this.options[this.selectedIndex];
+                const stock = parseInt(selectedOpt.getAttribute('data-stock')) || 0;
+                
+                inputCant.max = stock;
+                stockLabel.textContent = 'Stock disponible: ' + stock + ' ud.';
+                stockLabel.classList.remove('d-none');
+                
+                if (parseInt(inputCant.value) > stock) {
+                    inputCant.value = stock;
+                }
+            });
+        }
+    });
+
+    window.ajustarDashboardCantidad = function(delta) {
+        const input = document.getElementById('dashboardConsumoCantidad');
+        const val   = parseInt(input.value) || 1;
+        const max   = parseInt(input.max)   || 9999;
+        const nuevo = Math.max(1, Math.min(max, val + delta));
+        input.value = nuevo;
+    };
 </script>
 
 {{-- Modal Registrar Gasto --}}
@@ -317,6 +385,188 @@
                     <button type="submit" class="btn btn-danger px-4 fw-bold">Guardar Gasto</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+{{-- Modal Registrar Consumo Personal --}}
+<div class="modal fade" id="modalConsumo" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title fw-bold">Registrar Consumo del Personal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ route('cajero.consumo_personal.registrar') }}" method="POST">
+                @csrf
+                <div class="modal-body">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Producto consumido</label>
+                        <select name="producto_id" id="consumo_producto_id" class="form-select" required>
+                            <option value="" disabled selected>Seleccione un producto...</option>
+                            @foreach($productosInventario as $prod)
+                                <option value="{{ $prod->id }}" data-stock="{{ $prod->stock }}">{{ $prod->nombre }} (Stock: {{ $prod->stock }} ud.)</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Cantidad a descontar</label>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="input-group" style="max-width: 180px;">
+                                <button type="button" class="btn btn-outline-secondary" onclick="ajustarDashboardCantidad(-1)">
+                                    <i class="bi bi-dash-lg"></i>
+                                </button>
+                                <input type="number"
+                                       id="dashboardConsumoCantidad"
+                                       name="cantidad"
+                                       class="form-control text-center fw-bold fs-5"
+                                       value="1" min="1" required>
+                                <button type="button" class="btn btn-outline-secondary" onclick="ajustarDashboardCantidad(1)">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                            <span id="stock_disponible_label" class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-3 py-2 fs-6 rounded-pill fw-bold d-none"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Motivo / Personal <span class="text-muted fw-normal">(opcional)</span></label>
+                        <input type="text" name="descripcion" id="dashboardConsumoDescripcion" class="form-control" placeholder="Ej: Turno noche - Juan P., compra interna...">
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-white px-4 fw-bold">Guardar Consumo</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function verDetalleFactura(facturaId, urlDetalle) {
+        Swal.fire({
+            title: 'Cargando detalle...',
+            allowOutsideClick: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        fetch(urlDetalle)
+            .then(r => r.json())
+            .then(data => {
+                Swal.close();
+                if (data.success) {
+                    document.getElementById('lbl-factura-id').textContent = data.factura.id;
+                    document.getElementById('lbl-factura-mesa').textContent = 'Mesa ' + data.factura.mesa_numero;
+                    document.getElementById('lbl-factura-fecha').textContent = data.factura.fecha;
+                    document.getElementById('lbl-factura-cliente').textContent = data.factura.cliente_nombre;
+                    document.getElementById('lbl-factura-nit').textContent = data.factura.cliente_nit_ci;
+                    
+                    const metodoBadge = document.getElementById('lbl-factura-metodo');
+                    metodoBadge.textContent = data.factura.metodo_pago.toUpperCase();
+                    
+                    document.getElementById('lbl-factura-cajero').textContent = data.factura.cajero_nombre;
+                    document.getElementById('lbl-factura-total').textContent = 'Bs ' + data.factura.monto_pagado.toFixed(2);
+
+                    const tbody = document.getElementById('tbl-factura-detalles');
+                    tbody.innerHTML = '';
+                    data.detalles.forEach(d => {
+                        let notasHtml = d.notas ? `<br><small class="text-warning">* Nota: ${d.notas}</small>` : '';
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${d.cantidad}x</td>
+                                <td>
+                                    <strong>${d.producto_nombre}</strong>
+                                    ${notasHtml}
+                                </td>
+                                <td class="text-end">Bs ${d.precio_unitario.toFixed(2)}</td>
+                                <td class="text-end fw-bold">Bs ${d.subtotal.toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+
+                    const modal = new bootstrap.Modal(document.getElementById('modalDetalleFactura'));
+                    modal.show();
+                } else {
+                    Swal.fire('Error', 'No se pudo obtener el detalle de la venta.', 'error');
+                }
+            })
+            .catch(e => {
+                console.error("Error al obtener detalle de factura.", e);
+                Swal.close();
+                Swal.fire('Error', 'Hubo un error de red al intentar conectarse al servidor.', 'error');
+            });
+    }
+</script>
+
+{{-- Modal Detalle de Factura --}}
+<div class="modal fade" id="modalDetalleFactura" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-receipt me-2"></i>Detalle de Venta #<span id="lbl-factura-id"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <!-- Info General -->
+                <div class="row g-2 mb-3" style="font-size: 0.9rem;">
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Mesa</small>
+                        <span id="lbl-factura-mesa" class="fw-bold text-dark"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Fecha y Hora</small>
+                        <span id="lbl-factura-fecha"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Cliente</small>
+                        <span id="lbl-factura-cliente" class="fw-medium"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">CI/NIT</small>
+                        <span id="lbl-factura-nit"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Método de Pago</small>
+                        <span id="lbl-factura-metodo" class="badge bg-secondary"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block text-uppercase fw-bold" style="font-size: 0.65rem;">Cajero</small>
+                        <span id="lbl-factura-cajero"></span>
+                    </div>
+                </div>
+
+                <hr class="opacity-10">
+
+                <!-- Tabla de Productos Consumidos -->
+                <h6 class="fw-bold mb-2 text-dark"><i class="bi bi-list-ul me-1 text-primary"></i> Detalle de Consumo</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Cant.</th>
+                                <th>Producto</th>
+                                <th class="text-end">P. Unit</th>
+                                <th class="text-end">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbl-factura-detalles">
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" class="text-end text-uppercase" style="font-size: 0.75rem;">Total Cobrado:</th>
+                                <th id="lbl-factura-total" class="text-end text-success fs-5 fw-bold"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Cerrar</button>
+            </div>
         </div>
     </div>
 </div>

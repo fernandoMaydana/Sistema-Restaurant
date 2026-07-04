@@ -30,6 +30,109 @@
         input[type=number] {
             -moz-appearance: textfield;
         }
+
+        /* --- ESTILOS LIGHTBOX GLOBAL Y MINIATURAS --- */
+        .lightbox-overlay {
+            display: none;
+            position: fixed;
+            z-index: 10000; /* Mayor que navbar o modals de Bootstrap */
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            justify-content: center;
+            align-items: center;
+            cursor: zoom-out;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        .lightbox-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .lightbox-content {
+            margin: auto;
+            display: block;
+            max-width: 85%;
+            max-height: 80vh;
+            border-radius: 16px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5);
+            transform: scale(0.9);
+            transition: transform 0.25s ease;
+            border: 4px solid rgba(255,255,255,0.1);
+        }
+        .lightbox-overlay.show .lightbox-content {
+            transform: scale(1);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 20px;
+            right: 35px;
+            color: #fff;
+            font-size: 40px;
+            font-weight: bold;
+            transition: 0.2s;
+            cursor: pointer;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .lightbox-close:hover {
+            color: #ddd;
+            transform: scale(1.1);
+        }
+        .lightbox-caption {
+            position: absolute;
+            bottom: 40px;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: 600;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 24px;
+            border-radius: 30px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.15);
+            max-width: 80%;
+        }
+
+        /* Miniaturas de Producto con zoom en Hover */
+        .product-zoom-container {
+            overflow: hidden;
+            border-radius: 16px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+            border: 2px solid #fff;
+            cursor: zoom-in;
+            display: inline-block;
+            transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+        }
+        .product-zoom-container:hover {
+            transform: scale(1.08);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        .product-zoom-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Placeholders con Degradado Premium */
+        .product-placeholder-gradient {
+            background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+            color: #e65100;
+            border: 1.5px dashed rgba(230, 81, 0, 0.3) !important;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 16px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.02);
+        }
+        .product-placeholder-gradient:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 12px rgba(230, 81, 0, 0.08);
+        }
     </style>
 </head>
 <body>
@@ -68,6 +171,11 @@
                                 <li class="nav-item">
                                     <a class="nav-link {{ Route::is('cajero.inventario') ? 'active fw-bold text-primary' : '' }}" href="{{ route('cajero.inventario') }}">
                                         <i class="bi bi-box-seam me-1"></i>Inventario
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {{ Route::is('cajero.cajas.historial') ? 'active fw-bold text-primary' : '' }}" href="{{ route('cajero.cajas.historial') }}">
+                                        <i class="bi bi-safe me-1"></i>Historial Cajas
                                     </a>
                                 </li>
                             @endif
@@ -161,5 +269,46 @@
     </script>
 
     @yield('scripts')
+
+    {{-- Componente Lightbox Global para Imágenes de Productos --}}
+    <div id="global-lightbox" class="lightbox-overlay" onclick="cerrarLightbox()">
+        <span class="lightbox-close">&times;</span>
+        <img class="lightbox-content" id="lightbox-img" alt="Zoom Producto">
+        <div id="lightbox-caption" class="lightbox-caption"></div>
+    </div>
+
+    <script>
+        function mostrarLightbox(element) {
+            const src = element.getAttribute('data-lightbox-src') || element.src;
+            const caption = element.getAttribute('data-lightbox-caption') || element.alt;
+            const lightbox = document.getElementById('global-lightbox');
+            const img = document.getElementById('lightbox-img');
+            const cap = document.getElementById('lightbox-caption');
+            
+            img.src = src;
+            cap.textContent = caption;
+            lightbox.style.display = 'flex';
+            
+            // Forzar reflow para animación
+            setTimeout(() => {
+                lightbox.classList.add('show');
+            }, 10);
+        }
+
+        function cerrarLightbox() {
+            const lightbox = document.getElementById('global-lightbox');
+            lightbox.classList.remove('show');
+            setTimeout(() => {
+                lightbox.style.display = 'none';
+            }, 250);
+        }
+
+        // Cerrar con Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                cerrarLightbox();
+            }
+        });
+    </script>
 </body>
 </html>

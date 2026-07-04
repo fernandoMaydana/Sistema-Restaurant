@@ -28,13 +28,15 @@ class ProductoController extends Controller
     public function create()
     {
         $categorias = \App\Models\Categoria::all();
-        return view('admin.productos.create', compact('categorias'));
+        $siatProductos = \Illuminate\Support\Facades\DB::table('siat_productos_servicios')->get();
+        return view('admin.productos.create', compact('categorias', 'siatProductos'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'categoria_id'    => 'required|exists:categorias,id',
+            'codigo_sin'      => 'nullable|string|max:50',
             'nombre'          => 'required|string|max:255',
             'precio'          => 'required|numeric|min:0',
             'precio_nombre'   => 'nullable|string|max:50',
@@ -87,13 +89,15 @@ class ProductoController extends Controller
     {
         $producto = \App\Models\Producto::findOrFail($id);
         $categorias = \App\Models\Categoria::all();
-        return view('admin.productos.edit', compact('producto', 'categorias'));
+        $siatProductos = \Illuminate\Support\Facades\DB::table('siat_productos_servicios')->get();
+        return view('admin.productos.edit', compact('producto', 'categorias', 'siatProductos'));
     }
 
     public function update(Request $request, string $id)
     {
         $request->validate([
             'categoria_id'    => 'required|exists:categorias,id',
+            'codigo_sin'      => 'nullable|string|max:50',
             'nombre'          => 'required|string|max:255',
             'precio'          => 'required|numeric|min:0',
             'precio_nombre'   => 'nullable|string|max:50',

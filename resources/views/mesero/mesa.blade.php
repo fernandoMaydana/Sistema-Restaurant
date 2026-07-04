@@ -83,6 +83,14 @@
                 scrollbar-width: none; /* Firefox */
                 -ms-overflow-style: none; /* IE y Edge */
             }
+            .mesero-product-card {
+                border-radius: 16px !important;
+                transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+            }
+            .mesero-product-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 6px 15px rgba(0,0,0,0.06) !important;
+            }
         </style>
 
         <div class="tab-content px-2">
@@ -92,14 +100,17 @@
                     @foreach($combos as $combo)
                         <div class="card border shadow-sm" style="border-radius: 12px; overflow: hidden; border-left: 5px solid #dc3545 !important;">
                             <div class="d-flex align-items-center p-2">
-                                <div class="flex-shrink-0 bg-light rounded d-flex align-items-center justify-content-center text-muted position-relative" 
-                                     style="width: 70px; height: 70px; border: 1px dashed #ccc;">
-                                    @if($combo->imagen)
-                                        <img src="{{ asset('storage/' . $combo->imagen) }}" alt="{{ $combo->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
-                                    @else
-                                        <i class="bi bi-gift text-danger" style="font-size: 1.5rem;"></i>
-                                    @endif
-                                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger" style="font-size: 0.6rem; z-index: 10;">
+                                <div class="position-relative flex-shrink-0" style="width: 85px; height: 85px;">
+                                    <div class="product-zoom-container shadow-xs w-100 h-100" style="border-radius: 14px;">
+                                        @if($combo->imagen)
+                                            <img src="{{ asset('storage/' . $combo->imagen) }}" alt="{{ $combo->nombre }}" class="product-zoom-img" onclick="mostrarLightbox(this)">
+                                        @else
+                                            <div class="product-placeholder-gradient w-100 h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);">
+                                                <i class="bi bi-gift-fill" style="font-size: 1.8rem; color: #dc3545;"></i>
+                                            </div>
+                                        @endif
+                                    </div>
+                                    <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem; z-index: 10; padding: 0.35em 0.65em;">
                                         {{ $combo->tipo === 'fijo' ? 'Fijo' : 'Promo' }}
                                     </span>
                                 </div>
@@ -141,19 +152,22 @@
                             @php $key = 'p_' . $prod->id; @endphp
                             
                             {{-- Tarjeta de producto horizontal para móvil --}}
-                            <div class="card border shadow-sm" style="border-radius: 12px; overflow: hidden; transition: border-color .15s" id="card-{{ $prod->id }}">
+                            <div class="card border shadow-sm mesero-product-card" style="overflow: hidden;" id="card-{{ $prod->id }}">
                                 <div class="d-flex align-items-center p-2">
                                     {{-- Recuadro para Imagen del Producto --}}
-                                    <div class="flex-shrink-0 bg-light rounded d-flex align-items-center justify-content-center text-muted position-relative" 
-                                         style="width: 70px; height: 70px; border: 1px dashed #ccc;">
-                                        @if($prod->imagen)
-                                            <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" style="width: 100%; height: 100%; object-fit: cover; border-radius: inherit;">
-                                        @else
-                                            <i class="bi bi-image" style="font-size: 1.5rem;"></i>
-                                        @endif
+                                    <div class="position-relative flex-shrink-0" style="width: 85px; height: 85px;">
+                                        <div class="product-zoom-container shadow-xs w-100 h-100" style="border-radius: 14px;">
+                                            @if($prod->imagen)
+                                                <img src="{{ asset('storage/' . $prod->imagen) }}" alt="{{ $prod->nombre }}" class="product-zoom-img" onclick="mostrarLightbox(this)">
+                                            @else
+                                                <div class="product-placeholder-gradient w-100 h-100" style="border-radius: 12px;">
+                                                    <i class="bi bi-egg-fried" style="font-size: 1.8rem;"></i>
+                                                </div>
+                                            @endif
+                                        </div>
 
                                         @if($prod->usa_inventario)
-                                            <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.65rem; z-index: 10;">
+                                            <span class="position-absolute top-0 start-0 translate-middle badge rounded-pill {{ $prod->stock > 0 ? 'bg-primary' : 'bg-danger' }}" style="font-size: 0.75rem; z-index: 10; padding: 0.35em 0.65em;">
                                                 {{ $prod->stock }}
                                             </span>
                                         @endif
