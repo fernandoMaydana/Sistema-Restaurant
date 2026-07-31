@@ -1284,7 +1284,9 @@ class CajeraController extends Controller
         $factura = Factura::with(['pedido.detalles.producto', 'pedido.mesa', 'cajero'])
             ->findOrFail($factura_id);
 
-        return view('cajero.factura', compact('factura'));
+        $pedidoPendienteId = session('pedido_pendiente_id') ?? request('pedido_pendiente_id');
+
+        return view('cajero.factura', compact('factura', 'pedidoPendienteId'));
     }
 
     /**
@@ -1292,6 +1294,10 @@ class CajeraController extends Controller
      */
     public function anularFactura($factura_id)
     {
+        if (auth()->user()->role !== 'admin') {
+            return redirect()->back()->with('error', '⛔ No tiene permisos para anular ventas. Contacte con el administrador.');
+        }
+
         if (!$this->obtenerCajaAbierta()) {
             return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para anular facturas.');
         }
@@ -1520,6 +1526,13 @@ class CajeraController extends Controller
             return redirect()->back()->with('error', 'Debes seleccionar al menos un producto con cantidad mayor a 0 para dividir.');
         }
 
+        // Validar que el monto pagado no sea menor al total a cobrar
+        if (floatval($request->monto_pagado) < floatval($totalDividir)) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'El monto recibido (Bs ' . number_format($request->monto_pagado, 2) . ') no puede ser menor al total de la fracción a cobrar (Bs ' . number_format($totalDividir, 2) . ').');
+        }
+
         // Procesar DB Transaction
         try {
             $factura = DB::transaction(function () use ($request, $pedidoOriginal, $itemsProcesables, $totalDividir) {
@@ -1542,7 +1555,7 @@ class CajeraController extends Controller
                     PedidoDetalle::create([
                         'pedido_id' => $pedidoNuevo->id,
                         'producto_id' => $det->producto_id,
-                        'badge' => $det->badge,
+                        'notas' => $det->notas,
                         'cantidad' => $cant,
                         'precio_unitario' => $det->precio_unitario,
                         'estado_comanda' => 'impreso',
@@ -1616,12 +1629,13 @@ class CajeraController extends Controller
         $pedidoOriginalExiste = Pedido::find($pedido_id);
 
         if ($pedidoOriginalExiste) {
-            return redirect()->route('cajero.cobrar', $pedidoOriginalExiste->id)
-                ->with('success', "✅ Parte dividida cobrada con éxito. Aún queda saldo pendiente por cobrar.");
+            return redirect()->route('cajero.factura', $factura->id)
+                ->with('pedido_pendiente_id', $pedidoOriginalExiste->id)
+                ->with('success', "✅ Fracción cobrada con éxito (Factura #" . $factura->id . " emitida). Aún queda saldo de Bs " . number_format($pedidoOriginalExiste->total, 2) . " en la mesa.");
         }
 
         return redirect()->route('cajero.factura', $factura->id)
-            ->with('success', "✅ Cuenta dividida y pago procesado correctamente (Mesa totalmente cobrada y liberada).");
+            ->with('success', "✅ Cuenta dividida y pago final procesado correctamente (Mesa totalmente cobrada y liberada).");
     }
 
     /**
@@ -1649,6 +1663,51 @@ class CajeraController extends Controller
         $cajas = $query->paginate(15)->withQueryString();
 
         return view('cajero.cajas_historial', compact('cajas'));
+    }
+
+    /**
+     * Muestra el historial completo de ventas con filtros de búsqueda para el cajero.
+     */
+    public function historialVentas(Request $request)
+    {
+        if (!$this->obtenerCajaAbierta()) {
+            return redirect()->route('cajero.bienvenida')->with('error', 'Debe iniciar caja para acceder a las opciones.');
+        }
+
+        $query = Factura::with(['pedido.mesa', 'cajero', 'pedido.detalles.producto'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('fecha_especifica')) {
+            $query->whereDate('created_at', $request->fecha_especifica);
+        } else {
+            if ($request->filled('fecha_desde')) {
+                $query->whereDate('created_at', '>=', $request->fecha_desde);
+            }
+            if ($request->filled('fecha_hasta')) {
+                $query->whereDate('created_at', '<=', $request->fecha_hasta);
+            }
+        }
+
+        if ($request->filled('cliente')) {
+            $cliente = trim($request->cliente);
+            $query->where(function($q) use ($cliente) {
+                $q->where('cliente_nombre', 'like', "%{$cliente}%")
+                  ->orWhere('cliente_nit_ci', 'like', "%{$cliente}%");
+            });
+        }
+
+        if ($request->filled('metodo_pago')) {
+            $query->where('metodo_pago', $request->metodo_pago);
+        }
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        }
+
+        $totalFiltrado = (clone $query)->where('estado', 'activa')->sum('monto_pagado');
+        $facturas = $query->paginate(20)->appends($request->all());
+
+        return view('cajero.ventas_historial', compact('facturas', 'totalFiltrado'));
     }
 
     /**

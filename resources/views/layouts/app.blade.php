@@ -178,6 +178,11 @@
                                         <i class="bi bi-safe me-1"></i>Historial Cajas
                                     </a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link {{ Route::is('cajero.ventas.historial') ? 'active fw-bold text-primary' : '' }}" href="{{ route('cajero.ventas.historial') }}">
+                                        <i class="bi bi-receipt me-1"></i>Historial Ventas
+                                    </a>
+                                </li>
                             @endif
                         @endauth
                     </ul>
@@ -303,12 +308,10 @@
             }, 250);
         }
 
-        // Cerrar con Escape
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') {
-                cerrarLightbox();
-            }
-        });
+        // Evitar el menú contextual del navegador al mantener pulsado imágenes, botones o enlaces (sensación APK nativa)
+        document.addEventListener('contextmenu', function(e) {
+            if (e.target.tagName === 'IMG' || e.target.tagName === 'BUTTON' || e.target.closest('.btn') || e.target.closest('a')) {
+                e.preventDefault();
     </script>
 </body>
 </html>

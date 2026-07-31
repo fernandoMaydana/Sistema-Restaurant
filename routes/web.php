@@ -104,6 +104,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     // Panel principal: comandas pendientes + mesas a cobrar
     Route::get('/', [CajeraController::class, 'dashboard'])->name('dashboard');
     Route::get('/cajas-historial', [CajeraController::class, 'historialCajas'])->name('cajas.historial');
+    Route::get('/ventas-historial', [CajeraController::class, 'historialVentas'])->name('ventas.historial');
     Route::get('/cajas/{id}/detalle', [CajeraController::class, 'getDetalleCaja'])->name('cajas.detalle');
     Route::get('/ventas/{id}/detalle', [CajeraController::class, 'getDetalleVenta'])->name('ventas.detalle');
 

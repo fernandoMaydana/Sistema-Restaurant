@@ -73,6 +73,16 @@
             <i class="bi bi-printer me-2"></i> IMPRIMIR FACTURA
         </button>
         
+        @php
+            $pendienteId = $pedidoPendienteId ?? session('pedido_pendiente_id');
+        @endphp
+
+        @if($pendienteId)
+            <a href="{{ route('cajero.cobrar', $pendienteId) }}" class="btn btn-warning btn-lg fw-bold py-3 shadow-sm rounded-4 text-dark shadow-sm">
+                <i class="bi bi-scissors me-2"></i> CONTINUAR COBRANDO MESA
+            </a>
+        @endif
+
         <a href="{{ route('cajero.salon') }}" class="btn btn-outline-secondary btn-lg fw-bold py-3 shadow-sm rounded-4">
             <i class="bi bi-grid-3x3-gap me-2"></i> VOLVER AL SALÓN
         </a>

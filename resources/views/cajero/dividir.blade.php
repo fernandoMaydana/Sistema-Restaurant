@@ -60,9 +60,12 @@
                                 </thead>
                                 <tbody>
                                     @foreach($pedido->detalles as $index => $det)
-                                        <tr id="row-det-{{ $det->id }}">
+                                        <tr id="row-det-{{ $det->id }}" data-precio="{{ $det->precio_unitario }}" data-id="{{ $det->id }}">
                                             <td>
                                                 <div class="fw-bold text-dark fs-6">{{ $det->nombre_mostrar }}</div>
+                                                @if($det->notas)
+                                                    <small class="text-info d-block"><i class="bi bi-chat-left-text me-1"></i>{{ $det->notas }}</small>
+                                                @endif
                                                 <small class="text-muted">Cantidad total en mesa: {{ $det->cantidad }}</small>
                                                 <input type="hidden" name="split_items[{{ $index }}][detalle_id]" value="{{ $det->id }}">
                                             </td>
@@ -158,7 +161,6 @@
 </div>
 
 <script>
-    const itemsSelection = {};
     let totalCobrar = 0;
 
     function modificarCantidad(id, delta, precio, maxCant = 999) {
@@ -171,9 +173,8 @@
         if (cant > maxCant) cant = maxCant;
 
         input.value = cant;
-        itemsSelection[id] = cant;
-
-        subLabel.innerText = (cant * precio).toFixed(2);
+        const subtotal = Math.round(cant * precio * 100) / 100;
+        subLabel.innerText = subtotal.toFixed(2);
 
         if (cant > 0) {
             row.classList.add('table-primary-subtle');
@@ -186,22 +187,20 @@
 
     function recalcularTotal() {
         totalCobrar = 0;
-        document.querySelectorAll('tbody tr').forEach(row => {
-            const id = row.id.replace('row-det-', '');
+        document.querySelectorAll('tbody tr[data-precio]').forEach(row => {
+            const id = row.getAttribute('data-id');
+            const precio = parseFloat(row.getAttribute('data-precio')) || 0;
             const cant = parseInt(document.getElementById('qty-' + id).value) || 0;
-            const sub = parseFloat(document.getElementById('subtotal-' + id).innerText) || 0;
-            totalCobrar += sub;
+            totalCobrar += (cant * precio);
         });
+
+        totalCobrar = Math.round(totalCobrar * 100) / 100;
 
         // Habilitar o deshabilitar botón de cobro
         const btnSubmit = document.getElementById('btn-submit');
-        if (totalCobrar > 0) {
-            btnSubmit.disabled = false;
-        } else {
-            btnSubmit.disabled = true;
-        }
+        btnSubmit.disabled = totalCobrar <= 0;
 
-        document.getElementById('total-a-cobrar').innerText = totalCobrar.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('total-a-cobrar').innerText = totalCobrar.toFixed(2);
         
         const inputMonto = document.getElementById('monto_pagado');
         inputMonto.min = totalCobrar.toFixed(2);
@@ -215,7 +214,7 @@
     function calcCambio() {
         const monto = parseFloat(document.getElementById('monto_pagado').value) || 0;
         const cambio = Math.max(0, monto - totalCobrar);
-        document.getElementById('cambio-display').textContent = 'Bs ' + cambio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('cambio-display').textContent = 'Bs ' + cambio.toFixed(2);
     }
 </script>
 

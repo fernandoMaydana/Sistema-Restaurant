@@ -212,16 +212,6 @@
                                                 <i class="bi bi-eye-fill me-1"></i>Detalle
                                             </button>
                                             @if($factura->estado === 'activa')
-                                                <form action="{{ route('cajero.factura.anular', $factura->id) }}" method="POST" class="d-inline swal-confirm-form"
-                                                      data-swal-title="¿Anular Venta?"
-                                                      data-swal-message="¿Estás seguro de que deseas ANULAR esta venta? Se descontará de la caja y reportes de hoy."
-                                                      data-swal-icon="danger"
-                                                      data-swal-confirm-text="Sí, anular venta">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 me-1">
-                                                        <i class="bi bi-x-circle me-1"></i>Anular Venta
-                                                    </button>
-                                                </form>
                                                 <button type="button" onclick="imprimirFacturaDirecta(event, '{{ route('cajero.api.imprimir.factura', $factura->id, false) }}')" class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btn-imprimir-hist-{{ $factura->id }}">
                                                     <i class="bi bi-printer me-1"></i>Imprimir Ticket
                                                 </button>
