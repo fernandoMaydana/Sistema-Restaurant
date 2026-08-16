@@ -335,4 +335,49 @@ class CajaController extends Controller
             'resumen_productos' => $productosAplanados,
         ]);
     }
+
+    /**
+     * Realiza un cierre administrativo/forzado de una sesión de caja pendiente.
+     */
+    public function cerrarCajaForzada($id)
+    {
+        $caja = CajaSesion::with('gastos')->findOrFail($id);
+
+        if ($caja->estado === 'cerrada') {
+            return redirect()->back()->with('info', 'La caja ya se encuentra cerrada.');
+        }
+
+        $siguienteCaja = CajaSesion::where('user_id', $caja->user_id)
+            ->where('id', '>', $caja->id)
+            ->orderBy('id', 'asc')
+            ->first();
+
+        $queryFacturas = Factura::where('estado', 'activa')
+            ->where('cajero_id', $caja->user_id)
+            ->where('created_at', '>=', $caja->fecha_apertura);
+
+        if ($siguienteCaja) {
+            $queryFacturas->where('created_at', '<', $siguienteCaja->fecha_apertura);
+        }
+
+        $facturas = $queryFacturas->get();
+
+        $totalVentas = $facturas->sum('monto_pagado');
+        $ventasEfectivo = $facturas->where('metodo_pago', 'efectivo')->sum('monto_pagado');
+        $totalGastos = $caja->gastos->sum('monto');
+
+        $fechaUltimaVenta = $facturas->max('created_at');
+        $fechaCierre = $fechaUltimaVenta 
+            ? $fechaUltimaVenta 
+            : (\Carbon\Carbon::parse($caja->fecha_apertura)->isToday() ? now() : \Carbon\Carbon::parse($caja->fecha_apertura)->endOfDay());
+
+        $caja->update([
+            'monto_final' => ($caja->monto_inicial + $ventasEfectivo) - $totalGastos,
+            'total_ventas' => $totalVentas,
+            'fecha_cierre' => $fechaCierre,
+            'estado' => 'cerrada',
+        ]);
+
+        return redirect()->back()->with('success', "✅ Caja #{$caja->id} cerrada correctamente. Ya puedes acceder a su PDF y Ticket.");
+    }
 }

@@ -60,6 +60,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::get('/cajas/{id}/pdf', [App\Http\Controllers\Admin\CajaController::class, 'descargarPdf'])->name('cajas.pdf');
     Route::post('/cajas/{id}/imprimir', [App\Http\Controllers\Admin\CajaController::class, 'imprimirTicket'])->name('cajas.imprimir');
     Route::get('/cajas/{id}/detalle', [App\Http\Controllers\Admin\CajaController::class, 'getDetalleCaja'])->name('cajas.detalle');
+    Route::post('/cajas/{id}/cerrar-forzado', [App\Http\Controllers\Admin\CajaController::class, 'cerrarCajaForzada'])->name('cajas.cerrar_forzado');
     
     // Historial de Ventas
     Route::get('/ventas', [App\Http\Controllers\Admin\HistorialVentaController::class, 'index'])->name('ventas.index');
@@ -106,6 +107,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::get('/cajas-historial', [CajeraController::class, 'historialCajas'])->name('cajas.historial');
     Route::get('/ventas-historial', [CajeraController::class, 'historialVentas'])->name('ventas.historial');
     Route::get('/cajas/{id}/detalle', [CajeraController::class, 'getDetalleCaja'])->name('cajas.detalle');
+    Route::post('/cajas/{id}/cerrar-forzado', [CajeraController::class, 'cerrarCajaForzada'])->name('cajas.cerrar_forzado');
     Route::get('/ventas/{id}/detalle', [CajeraController::class, 'getDetalleVenta'])->name('ventas.detalle');
 
     // Ver e imprimir comanda a cocina
@@ -142,6 +144,12 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     // Dividir cuenta
     Route::get('/pedidos/{pedido_id}/dividir', [CajeraController::class, 'formDividir'])->name('pedidos.dividir');
     Route::post('/pedidos/{pedido_id}/dividir', [CajeraController::class, 'procesarDivision'])->name('pedidos.dividir.procesar');
+
+    // Acciones avanzadas de mesa en Salón (Cambiar, Unir, Descuento, Nota)
+    Route::post('/pedidos/{pedido_id}/cambiar-mesa', [CajeraController::class, 'cambiarMesa'])->name('pedidos.cambiar_mesa');
+    Route::post('/pedidos/{pedido_id}/unir-mesa', [CajeraController::class, 'unirMesas'])->name('pedidos.unir_mesa');
+    Route::post('/pedidos/{pedido_id}/descuento', [CajeraController::class, 'aplicarDescuento'])->name('pedidos.descuento');
+    Route::post('/pedidos/{pedido_id}/nota', [CajeraController::class, 'guardarNotaMesa'])->name('pedidos.nota');
 
     // Inventario y Control de Stock
     Route::get('/inventario', [CajeraController::class, 'inventario'])->name('inventario');

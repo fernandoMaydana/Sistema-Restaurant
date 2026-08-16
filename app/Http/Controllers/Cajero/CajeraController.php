@@ -60,6 +60,15 @@ class CajeraController extends Controller
             'monto_inicial' => 'required|numeric|min:0',
         ]);
 
+        // Auto-cerrar cualquier sesión previa que se haya quedado abierta sin cerrar en días pasados
+        $cajasAbiertasPrevias = CajaSesion::where('user_id', auth()->id())
+            ->where('estado', 'abierta')
+            ->get();
+
+        foreach ($cajasAbiertasPrevias as $cajaPrevia) {
+            $this->ejecutarCierreForzado($cajaPrevia);
+        }
+
         CajaSesion::create([
             'user_id' => auth()->id(),
             'monto_inicial' => $request->monto_inicial,
@@ -92,14 +101,19 @@ class CajeraController extends Controller
             ->where('estado', 'cuenta_solicitada')
             ->orderBy('updated_at', 'asc')
             ->get();
- 
-        // --- NUEVO: Resumen de ventas e historial ---
+
+        // --- Resumen de ventas e historial ---
         $totalVentasHoy = Factura::where('estado', 'activa')->whereDate('created_at', today())->sum('monto_pagado');
         $facturasHoy = Factura::with(['pedido.mesa', 'cajero'])
             ->whereDate('created_at', today())
             ->orderBy('created_at', 'desc')
             ->get();
- 
+
+        // --- Ventas estimadas por cobrar en mesas y pedidos activos ---
+        $pedidosActivosHoy = Pedido::whereIn('estado', ['abierto', 'cuenta_solicitada'])->get();
+        $totalEstimadoMesasHoy = $pedidosActivosHoy->sum('total');
+        $cantMesasActivas = $pedidosActivosHoy->count();
+
         if ($caja) {
             $gastosHoy = $caja->gastos()->orderBy('created_at', 'desc')->get();
             $totalGastosHoy = $gastosHoy->sum('monto');
@@ -123,6 +137,8 @@ class CajeraController extends Controller
             'pedidosConComandaPendiente', 
             'mesasParaCobrar', 
             'totalVentasHoy', 
+            'totalEstimadoMesasHoy',
+            'cantMesasActivas',
             'facturasHoy',
             'gastosHoy',
             'totalGastosHoy',
@@ -236,6 +252,61 @@ class CajeraController extends Controller
             'ventasPorMetodo' => $ventasPorMetodo,
             'gastos' => $gastos,
             'totalGastos' => $totalGastos
+        ]);
+    }
+
+    /**
+     * Cierre manual/forzado de una sesión de caja desde el historial.
+     */
+    public function cerrarCajaForzada($id)
+    {
+        $caja = CajaSesion::with('gastos')->findOrFail($id);
+
+        if ($caja->estado === 'cerrada') {
+            return redirect()->back()->with('info', 'La caja ya está cerrada.');
+        }
+
+        $this->ejecutarCierreForzado($caja);
+
+        return redirect()->back()->with('success', "✅ Caja #{$caja->id} cerrada exitosamente. Ya puedes descargar su PDF e imprimir el Ticket.");
+    }
+
+    /**
+     * Ejecuta los cálculos y cierra la sesión de caja dada.
+     */
+    private function ejecutarCierreForzado(CajaSesion $caja)
+    {
+        if ($caja->estado === 'cerrada') return;
+
+        $siguienteCaja = CajaSesion::where('user_id', $caja->user_id)
+            ->where('id', '>', $caja->id)
+            ->orderBy('id', 'asc')
+            ->first();
+
+        $queryFacturas = Factura::where('estado', 'activa')
+            ->where('cajero_id', $caja->user_id)
+            ->where('created_at', '>=', $caja->fecha_apertura);
+
+        if ($siguienteCaja) {
+            $queryFacturas->where('created_at', '<', $siguienteCaja->fecha_apertura);
+        }
+
+        $facturas = $queryFacturas->get();
+
+        $totalVentas = $facturas->sum('monto_pagado');
+        $ventasEfectivo = $facturas->where('metodo_pago', 'efectivo')->sum('monto_pagado');
+        $totalGastos = $caja->gastos->sum('monto');
+
+        $fechaUltimaVenta = $facturas->max('created_at');
+        $fechaCierre = $fechaUltimaVenta 
+            ? $fechaUltimaVenta 
+            : (\Carbon\Carbon::parse($caja->fecha_apertura)->isToday() ? now() : \Carbon\Carbon::parse($caja->fecha_apertura)->endOfDay());
+
+        $caja->update([
+            'monto_final' => ($caja->monto_inicial + $ventasEfectivo) - $totalGastos,
+            'total_ventas' => $totalVentas,
+            'fecha_cierre' => $fechaCierre,
+            'estado' => 'cerrada',
         ]);
     }
 
@@ -496,8 +567,13 @@ class CajeraController extends Controller
         if ($mesa->es_para_llevar) {
             $pedido = Pedido::where('mesa_id', $mesa->id)->whereIn('estado', ['abierto', 'cuenta_solicitada'])->first();
             if ($pedido) {
-                return redirect()->route('cajero.cobrar', $pedido->id)
-                    ->with('success', "✅ Pedido para Llevar guardado. Procede con el cobro.");
+                if ($request->input('opcion_pago') === 'recoger_despues') {
+                    return redirect()->route('cajero.salon')
+                        ->with('success', "✅ Pedido para Llevar #{$mesa->numero} registrado (Pagar al recoger).");
+                } else {
+                    return redirect()->route('cajero.cobrar', $pedido->id)
+                        ->with('success', "✅ Pedido para Llevar #{$mesa->numero} guardado. Procede con el cobro.");
+                }
             }
         }
 
@@ -1962,5 +2038,114 @@ class CajeraController extends Controller
             'success' => true,
             'message' => 'Reserva eliminada con éxito.'
         ]);
+    }
+
+    /**
+     * Cambia la mesa asignada a un pedido activo (Mover a mesa libre).
+     */
+    public function cambiarMesa(Request $request, $pedido_id)
+    {
+        $request->validate([
+            'nueva_mesa_id' => 'required|exists:mesas,id'
+        ]);
+
+        $pedido = Pedido::findOrFail($pedido_id);
+        $mesaAnterior = Mesa::findOrFail($pedido->mesa_id);
+        $nuevaMesa = Mesa::findOrFail($request->nueva_mesa_id);
+
+        $tienePedidosActivos = Pedido::where('mesa_id', $nuevaMesa->id)
+            ->whereIn('estado', ['abierto', 'cuenta_solicitada'])
+            ->where('id', '!=', $pedido->id)
+            ->exists();
+
+        if ($tienePedidosActivos) {
+            return redirect()->back()->with('error', "La Mesa {$nuevaMesa->numero} ya está ocupada.");
+        }
+
+        $pedido->update(['mesa_id' => $nuevaMesa->id]);
+
+        $mesaAnterior->update(['estado' => 'libre']);
+        $nuevaMesa->update(['estado' => 'ocupada']);
+
+        return redirect()->route('cajero.salon')->with('success', "✅ Pedido movido con éxito a la Mesa {$nuevaMesa->numero}.");
+    }
+
+    /**
+     * Une el consumo de una mesa a otra mesa ocupada (Fusionar pedidos).
+     */
+    public function unirMesas(Request $request, $pedido_id)
+    {
+        $request->validate([
+            'pedido_destino_id' => 'required|exists:pedidos,id'
+        ]);
+
+        $pedidoOrigen = Pedido::with('detalles')->findOrFail($pedido_id);
+        $pedidoDestino = Pedido::with('detalles')->findOrFail($request->pedido_destino_id);
+
+        if ($pedidoOrigen->id === $pedidoDestino->id) {
+            return redirect()->back()->with('error', "No puedes unir un pedido consigo mismo.");
+        }
+
+        foreach ($pedidoOrigen->detalles as $detalle) {
+            $detalle->update(['pedido_id' => $pedidoDestino->id]);
+        }
+
+        $nuevoSubtotal = $pedidoDestino->detalles()->sum(DB::raw('cantidad * precio_unitario'));
+        $nuevoTotal = max(0, $nuevoSubtotal - ($pedidoDestino->descuento ?? 0));
+        $pedidoDestino->update(['total' => $nuevoTotal]);
+
+        $mesaOrigen = Mesa::find($pedidoOrigen->mesa_id);
+        if ($mesaOrigen) {
+            $mesaOrigen->update(['estado' => 'libre']);
+        }
+        $pedidoOrigen->delete();
+
+        return redirect()->route('cajero.salon')->with('success', "✅ Pedidos unidos exitosamente.");
+    }
+
+    /**
+     * Aplica un descuento en Bs o Porcentaje al pedido.
+     */
+    public function aplicarDescuento(Request $request, $pedido_id)
+    {
+        $request->validate([
+            'tipo_descuento' => 'required|in:monto,porcentaje',
+            'valor_descuento' => 'required|numeric|min:0'
+        ]);
+
+        $pedido = Pedido::with('detalles')->findOrFail($pedido_id);
+        $subtotal = $pedido->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario);
+
+        $descuentoCalculado = 0;
+        if ($request->tipo_descuento === 'porcentaje') {
+            $pct = min(100, floatval($request->valor_descuento));
+            $descuentoCalculado = ($subtotal * $pct) / 100;
+        } else {
+            $descuentoCalculado = min($subtotal, floatval($request->valor_descuento));
+        }
+
+        $nuevoTotal = max(0, $subtotal - $descuentoCalculado);
+
+        $pedido->update([
+            'descuento' => $descuentoCalculado,
+            'total' => $nuevoTotal
+        ]);
+
+        return redirect()->back()->with('success', "✅ Descuento de Bs " . number_format($descuentoCalculado, 2) . " aplicado a la mesa.");
+    }
+
+    /**
+     * Guarda o actualiza la nota especial de la mesa.
+     */
+    public function guardarNotaMesa(Request $request, $pedido_id)
+    {
+        $request->validate([
+            'notas' => 'nullable|string|max:255'
+        ]);
+
+        $pedido = Pedido::findOrFail($pedido_id);
+        $pedido->update(['notas' => $request->notas]);
+
+        return redirect()->back()->with('success', "✅ Nota guardada para la mesa.");
     }
 }

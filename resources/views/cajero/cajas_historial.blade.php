@@ -90,6 +90,14 @@
                                     <button type="button" onclick="verDetalleCaja({{ $caja->id }}, '{{ route('cajero.cajas.detalle', $caja->id, false) }}')" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1" title="Ver Detalle en Pantalla">
                                         <i class="bi bi-eye-fill"></i> DETALLE
                                     </button>
+                                    @if($caja->estado === 'abierta')
+                                        <form action="{{ route('cajero.cajas.cerrar_forzado', $caja->id) }}" method="POST" class="d-inline" onsubmit="return confirmarCierreForzado(event, this);">
+                                            @csrf
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3 me-1" title="Cerrar esta caja pendiente">
+                                                <i class="bi bi-x-circle me-1"></i> Cerrar Caja
+                                            </button>
+                                        </form>
+                                    @endif
                                     @if($caja->estado === 'cerrada')
                                         <a href="{{ route('cajero.cierre.pdf', $caja->id) }}" class="btn btn-sm btn-danger text-white rounded-pill px-3 me-1" title="Descargar PDF">
                                             <i class="bi bi-file-earmark-pdf-fill"></i> PDF
@@ -396,6 +404,30 @@
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         });
+    }
+
+    function confirmarCierreForzado(event, form) {
+        event.preventDefault();
+        Swal.fire({
+            title: '¿Cerrar esta sesión de caja?',
+            html: '<p class="text-secondary mb-0">Se calcularán automáticamente las ventas acumuladas para pasar la sesión a <strong>CERRADA</strong> y habilitar la descarga de su PDF y Ticket.</p>',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bi bi-x-circle-fill me-1"></i> Sí, Cerrar Caja',
+            cancelButtonText: 'Cancelar',
+            customClass: {
+                popup: 'rounded-4 border-0 shadow-lg',
+                confirmButton: 'rounded-pill px-4 py-2 fw-bold',
+                cancelButton: 'rounded-pill px-4 py-2 fw-semibold'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+        return false;
     }
 </script>
 @endsection

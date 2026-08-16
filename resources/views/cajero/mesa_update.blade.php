@@ -201,9 +201,23 @@
                             <h4 class="mb-0 fw-bold text-dark">Total estimado:</h4>
                             <h2 class="mb-0 fw-bold text-success" id="total-general">Bs 0.00</h2>
                         </div>
-                        <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm py-3" id="btn-submit">
-                            <i class="bi bi-check-circle-fill me-2"></i> ACTUALIZAR MESA
-                        </button>
+
+                        @if($mesa->es_para_llevar)
+                            <div class="d-flex flex-column gap-2">
+                                <button type="submit" name="opcion_pago" value="cobrar_ahora" class="btn btn-warning btn-lg fw-bold text-white shadow-sm py-3 rounded-4 d-flex align-items-center justify-content-center gap-2">
+                                    <i class="bi bi-credit-card-2-front-fill fs-5"></i>
+                                    <span>PAGAR EN ESTE MOMENTO (COBRAR AHORA)</span>
+                                </button>
+                                <button type="submit" name="opcion_pago" value="recoger_despues" class="btn btn-outline-primary btn-lg fw-bold shadow-sm py-3 rounded-4 d-flex align-items-center justify-content-center gap-2">
+                                    <i class="bi bi-clock-history fs-5"></i>
+                                    <span>PAGAR AL RECOGER DESPUÉS</span>
+                                </button>
+                            </div>
+                        @else
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm py-3 rounded-4" id="btn-submit">
+                                <i class="bi bi-check-circle-fill me-2"></i> ACTUALIZAR MESA
+                            </button>
+                        @endif
                     </div>
                 </div>
             </div>

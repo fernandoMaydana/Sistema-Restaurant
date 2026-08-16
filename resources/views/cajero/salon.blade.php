@@ -8,19 +8,25 @@
         <div class="col-lg-8 col-xl-9">
             <div class="card border-0 shadow-sm rounded-4 h-100">
                 <div class="card-header bg-white border-0 pt-3 px-3 pb-3">
-                    <div class="d-flex justify-content-between align-items-center w-100">
+                    <div class="d-flex justify-content-between align-items-center w-100 flex-wrap gap-2">
                         <div class="d-flex align-items-center gap-3 ps-1">
-                            <h3 class="fw-bold mb-0 text-dark">🪑 Salón de Mesas</h3>
+                            <h3 class="fw-bold mb-0 text-dark">Salón de Mesas</h3>
                             <span class="text-muted small"><i class="bi bi-person-circle me-1"></i>{{ Auth::user()->name }}</span>
                         </div>
-                        <div class="d-flex gap-2 ms-auto">
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            {{-- Buscador al lado izquierdo de Pedido para Llevar --}}
+                            <div class="input-group input-group-sm" style="width: 220px;">
+                                <span class="input-group-text bg-light border-end-0 rounded-start-pill ps-3"><i class="bi bi-search text-muted"></i></span>
+                                <input type="text" id="input-buscar-mesa" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Buscar mesa..." oninput="buscarMesas()" onkeyup="buscarMesas()">
+                            </div>
+
                             <a href="{{ route('cajero.pedido.llevar.crear') }}" class="btn btn-warning fw-bold text-white px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2 fs-6">
                                 <i class="bi bi-bag-plus-fill fs-5"></i>
-                                <span>🛍️ Pedido Para Llevar</span>
+                                <span>Pedido Para Llevar</span>
                             </a>
                             <button type="button" class="btn btn-primary fw-bold px-4 py-2 rounded-3 shadow-sm d-flex align-items-center gap-2 fs-6" onclick="abrirModalReservas()">
                                 <i class="bi bi-calendar-event-fill fs-5"></i>
-                                <span>📅 Reservas</span>
+                                <span>Reservas</span>
                             </button>
                         </div>
                     </div>
@@ -42,13 +48,13 @@
                     @if($pedidosLlevarActivos->isNotEmpty())
                         <div class="mb-4 bg-light p-3 rounded-4 border-0">
                             <h5 class="fw-bold mb-3 text-dark d-flex align-items-center gap-2">
-                                <span class="fs-4">🛍️</span> Pedidos Para Llevar Activos
+                                <i class="bi bi-bag-fill text-warning me-1"></i> Pedidos Para Llevar Activos
                                 <span class="badge bg-warning text-dark rounded-pill">{{ $pedidosLlevarActivos->count() }}</span>
                             </h5>
                             <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
                                 @foreach($pedidosLlevarActivos as $mesaLlevar)
                                     @php $pedidoLlevar = $mesaLlevar->pedidos->first(); @endphp
-                                    <div class="col">
+                                    <div class="col mesa-col" data-numero="{{ $mesaLlevar->numero }}">
                                         <div class="card h-100 border-0 shadow-sm mesa-card cursor-pointer"
                                              onclick="mostrarDetalle('{{ $mesaLlevar->id }}')"
                                              style="border-radius: 14px; background-color: #fff9f2; border-left: 5px solid #ffb703 !important; transition: all 0.2s;">
@@ -60,7 +66,6 @@
                                                              <i class="bi bi-clock-history me-1"></i>Hace {{ $pedidoLlevar->created_at->diff(now())->format('%H:%I') }} h
                                                         </small>
                                                     </div>
-                                                    <span class="badge bg-warning-subtle text-warning-emphasis px-2 py-1 rounded-pill" style="font-size: 0.65rem;">Por Cobrar</span>
                                                 </div>
                                                 
                                                 <div class="mt-2 d-flex justify-content-between align-items-center">
@@ -84,20 +89,18 @@
                                 $reservaHoy = $reservas->where('mesa_id', $mesa->id)->where('estado', 'pendiente')->first();
                             @endphp
 
-                            <div class="col">
+                            <div class="col mesa-col" data-numero="{{ $mesa->numero }}">
                                 <div class="card h-100 border-0 text-center shadow-sm mesa-card" 
                                      onclick="mostrarDetalle('{{ $mesa->id }}')"
+                                     ondblclick="window.location.href='{{ route('cajero.mesa', $mesa->id) }}'"
+                                     title="Un clic: ver detalle | Doble clic: atender mesa"
                                      style="cursor: pointer; border-radius: 12px; overflow: hidden; transition: all 0.2s; background-color: {{ $libre ? '#f8fff9' : '#fff9f9' }};">
                                      
                                     <div style="height: 5px; width: 100%; background: {{ $libre ? '#2ec4b6' : '#e63946' }};"></div>
 
                                     <div class="card-body p-3 d-flex flex-column align-items-center">
                                         <h4 class="fw-bold mb-1 text-dark">
-                                            @if($mesa->es_para_llevar)
-                                                🛍️ LLEVAR {{ $mesa->numero }}
-                                            @else
-                                                MESA {{ $mesa->numero }}
-                                            @endif
+                                            MESA {{ $mesa->numero }}
                                         </h4>
 
                                         @if($reservaHoy)
@@ -109,7 +112,6 @@
                                         @endif
                                         
                                         @if(!$libre)
-                                            {{-- Información Operativa --}}
                                             <div class="mt-2 mb-1">
                                                 <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.7rem;">
                                                     <i class="bi bi-clock me-1"></i>Hace {{ $pedidoActivo->created_at->diff(now())->format('%H:%I') }} h
@@ -122,24 +124,6 @@
 
                                             <div class="text-success fw-bold h3 mb-3">
                                                 Bs {{ number_format($pedidoActivo->total, 2) }}
-                                            </div>
-
-                                            {{-- Botones de impresión rápida --}}
-                                            <div class="d-flex gap-2 mt-auto w-100 justify-content-center">
-                                                <button type="button" 
-                                                   class="btn btn-sm btn-outline-primary d-flex align-items-center justify-content-center shadow-sm" 
-                                                   style="width: 40px; height: 40px; border-radius: 10px;"
-                                                   onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.comanda', $pedidoActivo->id) }}')"
-                                                   title="Imprimir Comanda (Cocina)">
-                                                    <i class="bi bi-printer-fill"></i>
-                                                </button>
-                                                <button type="button"
-                                                   class="btn btn-sm btn-outline-dark d-flex align-items-center justify-content-center shadow-sm" 
-                                                   style="width: 40px; height: 40px; border-radius: 10px;"
-                                                   onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.cuenta', $pedidoActivo->id) }}')"
-                                                   title="Imprimir Pre-cuenta">
-                                                    <i class="bi bi-receipt"></i>
-                                                </button>
                                             </div>
                                         @else
                                             <div class="py-4 text-muted opacity-50">
@@ -160,13 +144,82 @@
             </div>
         </div>
 
-        {{-- COLUMNA DERECHA: PANEL DE DETALLES --}}
+        {{-- COLUMNA DERECHA: PANEL DE CONTROL Y DETALLES --}}
         <div class="col-lg-4 col-xl-3">
+            {{-- Panel de Control Global por Defecto (Visible cuando no hay mesa seleccionada) --}}
             <div class="card border-0 shadow-sm rounded-4 h-100 min-vh-lg-80" id="panel-vacio" style="display: block;">
-                <div class="card-body d-flex flex-column align-items-center justify-content-center text-center text-muted p-5">
-                    <i class="bi bi-hand-index-thumb display-1 mb-3 opacity-25"></i>
-                    <h5>Selecciona una mesa</h5>
-                    <p class="small">Haz clic en cualquier mesa para ver los detalles y procesar acciones.</p>
+                <div class="card-header bg-white border-0 pt-4 px-3 pb-2 text-center w-100">
+                    <div class="d-flex flex-column align-items-center justify-content-center text-center w-100">
+                        <h4 class="fw-bold text-dark mb-1 text-center w-100">Panel de Control</h4>
+                        <p class="text-muted small mb-0 text-center w-100">Selecciona una acción o haz clic en una mesa</p>
+                    </div>
+                </div>
+                <div class="card-body p-4 d-flex flex-column justify-content-center gap-3">
+                    {{-- Acciones de Salón destacadas y amplias --}}
+                    <button type="button" class="btn btn-outline-primary py-3 px-3 rounded-4 shadow-sm text-start d-flex align-items-center justify-content-between fs-6 fw-bold" onclick="abrirModalCambiarMesaGlobal()">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-primary-subtle text-primary p-2 rounded-3">
+                                <i class="bi bi-arrow-left-right fs-4"></i>
+                            </div>
+                            <div>
+                                <div>Cambiar Mesa</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">Mover pedido a mesa libre</small>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-info py-3 px-3 rounded-4 shadow-sm text-start d-flex align-items-center justify-content-between fs-6 fw-bold" onclick="abrirModalUnirMesasGlobal()">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-info-subtle text-info p-2 rounded-3">
+                                <i class="bi bi-diagram-2 fs-4"></i>
+                            </div>
+                            <div>
+                                <div>Unir / Fusionar Mesas</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">Consolidar cuentas ocupadas</small>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-purple py-3 px-3 rounded-4 shadow-sm text-start d-flex align-items-center justify-content-between fs-6 fw-bold" onclick="abrirModalDividirCuentaGlobal()">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-purple-subtle text-purple p-2 rounded-3">
+                                <i class="bi bi-scissors fs-4"></i>
+                            </div>
+                            <div>
+                                <div>Dividir Cuenta</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">Separar pagos por cliente</small>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-success py-3 px-3 rounded-4 shadow-sm text-start d-flex align-items-center justify-content-between fs-6 fw-bold" onclick="abrirModalDescuentoGlobal()">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-success-subtle text-success p-2 rounded-3">
+                                <i class="bi bi-percent fs-4"></i>
+                            </div>
+                            <div>
+                                <div>Aplicar Descuento</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">Monto fijo o porcentaje</small>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
+
+                    <button type="button" class="btn btn-outline-warning text-dark py-3 px-3 rounded-4 shadow-sm text-start d-flex align-items-center justify-content-between fs-6 fw-bold" onclick="abrirModalNotaMesaGlobal()">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="bg-warning-subtle text-warning-emphasis p-2 rounded-3">
+                                <i class="bi bi-sticky fs-4"></i>
+                            </div>
+                            <div>
+                                <div>Nota Especial</div>
+                                <small class="text-muted fw-normal" style="font-size: 0.75rem;">Agregar observación de mesa</small>
+                            </div>
+                        </div>
+                        <i class="bi bi-chevron-right text-muted"></i>
+                    </button>
                 </div>
             </div>
 
@@ -252,8 +305,72 @@
                                 </div>
                             </div>
 
-                            {{-- Botón de Cobro --}}
+                            {{-- Nota Especial si existe --}}
+                            @if($pedidoActivo->notas)
+                                <div class="alert alert-warning py-2 px-3 mb-3 border-0 rounded-3 small shadow-sm d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <i class="bi bi-sticky-fill me-1 text-warning"></i><strong>Nota:</strong> {{ $pedidoActivo->notas }}
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-link text-dark p-0" onclick="abrirModalNotaMesa('{{ $pedidoActivo->id }}', '{{ addslashes($pedidoActivo->notas) }}')">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                </div>
+                            @endif
+
+                            {{-- Acciones Avanzadas de Mesa --}}
+                            <div class="card border-0 bg-light p-2 mb-3 rounded-4">
+                                <div class="text-muted fw-bold small mb-2 px-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">⚡ ACCIONES DE MESA</div>
+                                <div class="row g-2">
+                                    {{-- 1. Cambiar Mesa --}}
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalCambiarMesa('{{ $pedidoActivo->id }}', '{{ $mesa->numero }}')">
+                                            <i class="bi bi-arrow-left-right text-primary me-1"></i> Cambiar Mesa
+                                        </button>
+                                    </div>
+
+                                    {{-- 2. Unir Mesas --}}
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalUnirMesas('{{ $pedidoActivo->id }}', '{{ $mesa->numero }}')">
+                                            <i class="bi bi-diagram-2 text-info me-1"></i> Unir Mesas
+                                        </button>
+                                    </div>
+
+                                    {{-- 3. Dividir Cuenta --}}
+                                    <div class="col-6">
+                                        <a href="{{ route('cajero.pedidos.dividir', $pedidoActivo->id) }}" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm">
+                                            <i class="bi bi-scissors text-purple me-1"></i> Dividir Cuenta
+                                        </a>
+                                    </div>
+
+                                    {{-- 4. Aplicar Descuento --}}
+                                    <div class="col-6">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalDescuento('{{ $pedidoActivo->id }}', '{{ $pedidoActivo->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario) }}', '{{ $pedidoActivo->descuento ?? 0 }}')">
+                                            <i class="bi bi-percent text-success me-1"></i> Descuento
+                                        </button>
+                                    </div>
+
+                                    {{-- 5. Nota Especial --}}
+                                    <div class="col-12">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 bg-white shadow-sm" onclick="abrirModalNotaMesa('{{ $pedidoActivo->id }}', '{{ addslashes($pedidoActivo->notas ?? '') }}')">
+                                            <i class="bi bi-sticky text-warning me-1"></i> Nota: 
+                                            <span class="fw-semibold text-dark">{{ $pedidoActivo->notas ? Str::limit($pedidoActivo->notas, 22) : 'Agregar nota...' }}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {{-- Botón de Cobro y Totales --}}
                             <div class="mt-auto">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="text-muted small">Subtotal:</span>
+                                    <span class="fw-bold text-dark">Bs {{ number_format($pedidoActivo->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario), 2) }}</span>
+                                </div>
+                                @if(($pedidoActivo->descuento ?? 0) > 0)
+                                    <div class="d-flex justify-content-between align-items-center mb-1 text-danger small">
+                                        <span>Descuento aplicado:</span>
+                                        <span class="fw-bold">-Bs {{ number_format($pedidoActivo->descuento, 2) }}</span>
+                                    </div>
+                                @endif
                                 <div class="d-flex justify-content-between align-items-center mb-3">
                                     <span class="h5 mb-0 fw-bold">TOTAL:</span>
                                     <span class="h4 mb-0 fw-bold text-success">Bs {{ number_format($pedidoActivo->total, 2) }}</span>
@@ -796,9 +913,392 @@
             }
         });
     }
+
+    // --- BÚSQUEDA DE MESAS EN TIEMPO REAL ---
+    function buscarMesas() {
+        const input = document.getElementById('input-buscar-mesa');
+        if (!input) return;
+        const q = input.value.toLowerCase().trim();
+        const cols = document.querySelectorAll('.mesa-col');
+        
+        cols.forEach(col => {
+            const num = String(col.getAttribute('data-numero') || '').toLowerCase().trim();
+            const text = (col.textContent || col.innerText || '').toLowerCase();
+            
+            if (q === '' || num === q || num.includes(q) || text.includes(q)) {
+                col.classList.remove('d-none');
+                col.style.setProperty('display', '', 'important');
+            } else {
+                col.classList.add('d-none');
+                col.style.setProperty('display', 'none', 'important');
+            }
+        });
+    }
+
+    window.buscarMesas = buscarMesas;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputBuscar = document.getElementById('input-buscar-mesa');
+        if (inputBuscar) {
+            inputBuscar.addEventListener('input', buscarMesas);
+            inputBuscar.addEventListener('keyup', buscarMesas);
+            inputBuscar.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    buscarMesas();
+                }
+            });
+            inputBuscar.addEventListener('change', buscarMesas);
+        }
+    });
+
+    // --- FUNCIONES MODALES ACCIONES DE MESA (GLOBAL & ESPECÍFICO) ---
+    let currentSelectedPedidoId = null;
+
+    function abrirModalCambiarMesaGlobal() {
+        currentSelectedPedidoId = null;
+        document.getElementById('formCambiarMesa').action = '';
+        document.getElementById('divSelectMesaOrigenCambiar').style.display = 'block';
+        document.getElementById('lblMesaOrigenCambiarTexto').style.display = 'none';
+        document.getElementById('selectMesaOrigenCambiar').value = '';
+        new bootstrap.Modal(document.getElementById('modalCambiarMesa')).show();
+    }
+
+    function abrirModalCambiarMesa(pedidoId, numeroMesa) {
+        currentSelectedPedidoId = pedidoId;
+        document.getElementById('formCambiarMesa').action = `/cajero/pedidos/${pedidoId}/cambiar-mesa`;
+        document.getElementById('divSelectMesaOrigenCambiar').style.display = 'none';
+        const txt = document.getElementById('lblMesaOrigenCambiarTexto');
+        txt.innerText = `Mesa Origen: Mesa ${numeroMesa}`;
+        txt.style.display = 'block';
+        new bootstrap.Modal(document.getElementById('modalCambiarMesa')).show();
+    }
+
+    function submitFormCambiarMesa(e) {
+        if (!currentSelectedPedidoId) {
+            const sel = document.getElementById('selectMesaOrigenCambiar');
+            if (!sel.value) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona la mesa de origen.' });
+                return false;
+            }
+            document.getElementById('formCambiarMesa').action = `/cajero/pedidos/${sel.value}/cambiar-mesa`;
+        }
+        return true;
+    }
+
+    function abrirModalUnirMesasGlobal() {
+        currentSelectedPedidoId = null;
+        document.getElementById('formUnirMesas').action = '';
+        document.getElementById('divSelectMesaOrigenUnir').style.display = 'block';
+        document.getElementById('lblMesaOrigenUnirTexto').style.display = 'none';
+        document.getElementById('selectMesaOrigenUnir').value = '';
+        new bootstrap.Modal(document.getElementById('modalUnirMesas')).show();
+    }
+
+    function abrirModalUnirMesas(pedidoId, numeroMesa) {
+        currentSelectedPedidoId = pedidoId;
+        document.getElementById('formUnirMesas').action = `/cajero/pedidos/${pedidoId}/unir-mesa`;
+        document.getElementById('divSelectMesaOrigenUnir').style.display = 'none';
+        const txt = document.getElementById('lblMesaOrigenUnirTexto');
+        txt.innerText = `Mesa Origen: Mesa ${numeroMesa}`;
+        txt.style.display = 'block';
+        new bootstrap.Modal(document.getElementById('modalUnirMesas')).show();
+    }
+
+    function submitFormUnirMesas(e) {
+        if (!currentSelectedPedidoId) {
+            const sel = document.getElementById('selectMesaOrigenUnir');
+            if (!sel.value) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona la mesa de origen.' });
+                return false;
+            }
+            document.getElementById('formUnirMesas').action = `/cajero/pedidos/${sel.value}/unir-mesa`;
+        }
+        return true;
+    }
+
+    function abrirModalDividirCuentaGlobal() {
+        document.getElementById('selectMesaDividir').value = '';
+        new bootstrap.Modal(document.getElementById('modalDividirCuentaGlobal')).show();
+    }
+
+    function irADividirCuenta() {
+        const sel = document.getElementById('selectMesaDividir');
+        if (!sel.value) {
+            Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona una mesa a dividir.' });
+            return;
+        }
+        window.location.href = `/cajero/pedidos/${sel.value}/dividir`;
+    }
+
+    function abrirModalDescuentoGlobal() {
+        currentSelectedPedidoId = null;
+        document.getElementById('formDescuento').action = '';
+        document.getElementById('divSelectMesaDescuento').style.display = 'block';
+        document.getElementById('selectMesaDescuento').value = '';
+        document.getElementById('inputValorDescuento').value = '';
+        new bootstrap.Modal(document.getElementById('modalDescuento')).show();
+    }
+
+    function abrirModalDescuento(pedidoId, subtotal, descuentoActual) {
+        currentSelectedPedidoId = pedidoId;
+        document.getElementById('formDescuento').action = `/cajero/pedidos/${pedidoId}/descuento`;
+        document.getElementById('divSelectMesaDescuento').style.display = 'none';
+        document.getElementById('inputValorDescuento').value = descuentoActual > 0 ? descuentoActual : '';
+        new bootstrap.Modal(document.getElementById('modalDescuento')).show();
+    }
+
+    function submitFormDescuento(e) {
+        if (!currentSelectedPedidoId) {
+            const sel = document.getElementById('selectMesaDescuento');
+            if (!sel.value) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona una mesa.' });
+                return false;
+            }
+            document.getElementById('formDescuento').action = `/cajero/pedidos/${sel.value}/descuento`;
+        }
+        return true;
+    }
+
+    function abrirModalNotaMesaGlobal() {
+        currentSelectedPedidoId = null;
+        document.getElementById('formNotaMesa').action = '';
+        document.getElementById('divSelectMesaNota').style.display = 'block';
+        document.getElementById('selectMesaNota').value = '';
+        document.getElementById('inputNotasMesa').value = '';
+        new bootstrap.Modal(document.getElementById('modalNotaMesa')).show();
+    }
+
+    function abrirModalNotaMesa(pedidoId, notaActual) {
+        currentSelectedPedidoId = pedidoId;
+        document.getElementById('formNotaMesa').action = `/cajero/pedidos/${pedidoId}/nota`;
+        document.getElementById('divSelectMesaNota').style.display = 'none';
+        document.getElementById('inputNotasMesa').value = notaActual || '';
+        new bootstrap.Modal(document.getElementById('modalNotaMesa')).show();
+    }
+
+    function submitFormNotaMesa(e) {
+        if (!currentSelectedPedidoId) {
+            const sel = document.getElementById('selectMesaNota');
+            if (!sel.value) {
+                e.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Atención', text: 'Por favor selecciona una mesa.' });
+                return false;
+            }
+            document.getElementById('formNotaMesa').action = `/cajero/pedidos/${sel.value}/nota`;
+        }
+        return true;
+    }
 </script>
 
+{{-- MODAL CAMBIAR MESA --}}
+<div class="modal fade" id="modalCambiarMesa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-arrow-left-right text-primary"></i> Cambiar de Mesa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formCambiarMesa" method="POST" action="" onsubmit="return submitFormCambiarMesa(event)">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3" id="divSelectMesaOrigenCambiar">
+                        <label class="form-label fw-bold">1. Mesa Origen (Ocupada):</label>
+                        <select id="selectMesaOrigenCambiar" class="form-select form-select-lg rounded-3">
+                            <option value="" disabled selected>-- Seleccionar Mesa Ocupada --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcup)
+                                @php $pAct = $mOcup->pedidos->first(); @endphp
+                                <option value="{{ $pAct->id }}">Mesa {{ $mOcup->numero }} (Total: Bs {{ number_format($pAct->total, 2) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="lblMesaOrigenCambiarTexto" class="alert alert-primary bg-primary-subtle text-primary border-primary-subtle fw-bold mb-3" style="display:none;"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Nueva Mesa Libre (Destino):</label>
+                        <select name="nueva_mesa_id" class="form-select form-select-lg rounded-3" required>
+                            <option value="" disabled selected>-- Seleccionar Mesa Libre --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isEmpty()) as $mLibre)
+                                <option value="{{ $mLibre->id }}">Mesa {{ $mLibre->numero }} (Capacidad: {{ $mLibre->capacidad ?? 'N/A' }} sillas)</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold rounded-pill px-4">Confirmar Cambio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL UNIR MESAS --}}
+<div class="modal fade" id="modalUnirMesas" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-diagram-2 text-info"></i> Unir / Fusionar Mesas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formUnirMesas" method="POST" action="" onsubmit="return submitFormUnirMesas(event)">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3" id="divSelectMesaOrigenUnir">
+                        <label class="form-label fw-bold">1. Mesa Origen (A transferir):</label>
+                        <select id="selectMesaOrigenUnir" class="form-select form-select-lg rounded-3">
+                            <option value="" disabled selected>-- Seleccionar Mesa a Mover --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcup)
+                                @php $pAct = $mOcup->pedidos->first(); @endphp
+                                <option value="{{ $pAct->id }}">Mesa {{ $mOcup->numero }} (Total: Bs {{ number_format($pAct->total, 2) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div id="lblMesaOrigenUnirTexto" class="alert alert-info bg-info-subtle text-info-emphasis border-info-subtle fw-bold mb-3" style="display:none;"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Mesa Destino (Donde sumar la cuenta):</label>
+                        <select name="pedido_destino_id" class="form-select form-select-lg rounded-3" required>
+                            <option value="" disabled selected>-- Seleccionar Mesa Destino --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcupada)
+                                @php $pedDest = $mOcupada->pedidos->first(); @endphp
+                                <option value="{{ $pedDest->id }}">Mesa {{ $mOcupada->numero }} (Total acumulado: Bs {{ number_format($pedDest->total, 2) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info text-white fw-bold rounded-pill px-4">Fusionar Cuentas</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL DIVIDIR CUENTA GLOBAL --}}
+<div class="modal fade" id="modalDividirCuentaGlobal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-scissors text-purple"></i> Dividir Cuenta de Mesa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <label class="form-label fw-bold">Seleccionar Mesa a Dividir:</label>
+                <select id="selectMesaDividir" class="form-select form-select-lg rounded-3">
+                    <option value="" disabled selected>-- Seleccionar Mesa Ocupada --</option>
+                    @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcup)
+                        @php $pAct = $mOcup->pedidos->first(); @endphp
+                        <option value="{{ $pAct->id }}">Mesa {{ $mOcup->numero }} (Total: Bs {{ number_format($pAct->total, 2) }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-purple text-white fw-bold rounded-pill px-4" onclick="irADividirCuenta()">Ir a Dividir Cuenta</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL APLICAR DESCUENTO --}}
+<div class="modal fade" id="modalDescuento" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-percent text-success"></i> Aplicar Descuento a la Mesa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formDescuento" method="POST" action="" onsubmit="return submitFormDescuento(event)">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3" id="divSelectMesaDescuento">
+                        <label class="form-label fw-bold">Mesa Ocupada:</label>
+                        <select id="selectMesaDescuento" class="form-select form-select-lg rounded-3">
+                            <option value="" disabled selected>-- Seleccionar Mesa --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcup)
+                                @php $pAct = $mOcup->pedidos->first(); @endphp
+                                <option value="{{ $pAct->id }}" data-descuento="{{ $pAct->descuento ?? 0 }}">Mesa {{ $mOcup->numero }} (Total: Bs {{ number_format($pAct->total, 2) }})</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Tipo de Descuento:</label>
+                            <select name="tipo_descuento" class="form-select rounded-3" required>
+                                <option value="monto">Monto Fijo (Bs)</option>
+                                <option value="porcentaje">Porcentaje (%)</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">Valor:</label>
+                            <input type="number" step="0.01" min="0" name="valor_descuento" id="inputValorDescuento" class="form-control rounded-3" placeholder="Ej: 10" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success fw-bold rounded-pill px-4">Aplicar Descuento</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- MODAL NOTA ESPECIAL --}}
+<div class="modal fade" id="modalNotaMesa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="bi bi-sticky text-warning"></i> Nota Especial de Mesa
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formNotaMesa" method="POST" action="" onsubmit="return submitFormNotaMesa(event)">
+                @csrf
+                <div class="modal-body p-4">
+                    <div class="mb-3" id="divSelectMesaNota">
+                        <label class="form-label fw-bold">Mesa Ocupada:</label>
+                        <select id="selectMesaNota" class="form-select form-select-lg rounded-3">
+                            <option value="" disabled selected>-- Seleccionar Mesa --</option>
+                            @foreach($mesas->where('es_para_llevar', false)->filter(fn($m) => $m->pedidos->isNotEmpty()) as $mOcup)
+                                @php $pAct = $mOcup->pedidos->first(); @endphp
+                                <option value="{{ $pAct->id }}">Mesa {{ $mOcup->numero }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Observación / Nota Especial:</label>
+                        <textarea name="notas" id="inputNotasMesa" class="form-control rounded-3" rows="3" placeholder="Ej. Cliente VIP, Cumpleaños, Alergia al maní..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-warning text-dark fw-bold rounded-pill px-4">Guardar Nota</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
+.text-purple { color: #6f42c1 !important; }
+.bg-purple-subtle { background-color: #f3ebf9 !important; }
+.btn-purple { background-color: #6f42c1 !important; border-color: #6f42c1 !important; }
+.btn-purple:hover { background-color: #59339d !important; border-color: #59339d !important; }
+.btn-outline-purple { color: #6f42c1 !important; border-color: #6f42c1 !important; }
+.btn-outline-purple:hover { background-color: #6f42c1 !important; color: #fff !important; }
 .mesa-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;

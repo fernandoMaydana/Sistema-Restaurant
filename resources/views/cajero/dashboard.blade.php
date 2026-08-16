@@ -27,32 +27,72 @@
         </div>
     </div>
 
-    {{-- Resumen de Hoy --}}
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-success text-white">
-                <div class="card-body">
-                    <h6 class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Generado hoy</h6>
-                    <h2 class="fw-bold mb-0">Bs {{ number_format($totalVentasHoy, 2) }}</h2>
-                    <small class="opacity-75">Total de ventas cobradas</small>
+    {{-- Resumen de Hoy: Cobrado vs Estimado en Mesas --}}
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-xl-4 g-3 mb-4">
+        {{-- Card 1: Cobrado Real en Caja --}}
+        <div class="col">
+            <div class="card border-0 shadow-sm bg-success text-white rounded-4 h-100">
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 0.5px;">Dinero en Caja (Cobrado)</span>
+                        <i class="bi bi-cash-coin fs-4 opacity-75"></i>
+                    </div>
+                    <div>
+                        <h2 class="fw-bold mb-0">Bs {{ number_format($totalVentasHoy, 2) }}</h2>
+                        <small class="opacity-75" style="font-size: 0.78rem;">
+                            <i class="bi bi-check-all me-1"></i>{{ $facturasHoy->count() }} ventas cobradas
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-info text-white">
-                <div class="card-body">
-                    <h6 class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Ventas realizadas</h6>
-                    <h2 class="fw-bold mb-0">{{ $facturasHoy->count() }}</h2>
-                    <small class="opacity-75">Facturas emitidas hoy</small>
+
+        {{-- Card 2: Estimado Por Cobrar en Mesas --}}
+        <div class="col">
+            <div class="card border-0 shadow-sm text-dark rounded-4 h-100" style="background-color: #fff3cd; border-left: 5px solid #ffc107 !important;">
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold text-warning-emphasis" style="font-size: 0.7rem; letter-spacing: 0.5px;">Por Cobrar (En Mesas)</span>
+                        <i class="bi bi-clock-history fs-4 text-warning-emphasis"></i>
+                    </div>
+                    <div>
+                        <h2 class="fw-bold mb-0 text-dark">Bs {{ number_format($totalEstimadoMesasHoy, 2) }}</h2>
+                        <small class="text-muted" style="font-size: 0.78rem;">
+                            <i class="bi bi-grid-3x3-gap-fill me-1 text-warning"></i>{{ $cantMesasActivas }} mesas/pedidos activos
+                        </small>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card border-0 shadow-sm bg-danger text-white">
-                <div class="card-body">
-                    <h6 class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem;">Gastos del turno</h6>
-                    <h2 class="fw-bold mb-0">Bs {{ number_format($totalGastosHoy, 2) }}</h2>
-                    <small class="opacity-75">Dinero retirado de caja</small>
+
+        {{-- Card 3: Total Proyectado --}}
+        <div class="col">
+            <div class="card border-0 shadow-sm bg-primary text-white rounded-4 h-100">
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 0.5px;">Total Proyectado Hoy</span>
+                        <i class="bi bi-graph-up-arrow fs-4 opacity-75"></i>
+                    </div>
+                    <div>
+                        <h2 class="fw-bold mb-0">Bs {{ number_format($totalVentasHoy + $totalEstimadoMesasHoy, 2) }}</h2>
+                        <small class="opacity-75" style="font-size: 0.78rem;">Cobrado + Consumo en Mesas</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Card 4: Gastos del Turno --}}
+        <div class="col">
+            <div class="card border-0 shadow-sm bg-danger text-white rounded-4 h-100">
+                <div class="card-body p-3 d-flex flex-column justify-content-between">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-uppercase fw-bold opacity-75" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gastos del Turno</span>
+                        <i class="bi bi-box-arrow-right fs-4 opacity-75"></i>
+                    </div>
+                    <div>
+                        <h2 class="fw-bold mb-0">Bs {{ number_format($totalGastosHoy, 2) }}</h2>
+                        <small class="opacity-75" style="font-size: 0.78rem;">Dinero retirado de caja</small>
+                    </div>
                 </div>
             </div>
         </div>
