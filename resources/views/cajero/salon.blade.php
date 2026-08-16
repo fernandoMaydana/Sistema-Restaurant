@@ -61,7 +61,7 @@
                                             <div class="card-body p-3 d-flex flex-column justify-content-between">
                                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                                     <div>
-                                                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">LLEVAR #{{ $mesaLlevar->numero }}</h6>
+                                                        <h6 class="fw-bold mb-0 text-dark" style="font-size: 0.95rem;">LLEVAR #{{ $pedidoLlevar->numero_turno ?? $mesaLlevar->numero }}</h6>
                                                         <small class="text-muted" style="font-size: 0.75rem;">
                                                              <i class="bi bi-clock-history me-1"></i>Hace {{ $pedidoLlevar->created_at->diff(now())->format('%H:%I') }} h
                                                         </small>

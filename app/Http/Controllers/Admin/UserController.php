@@ -23,6 +23,32 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        // Auto-generar email si no se proporcionó
+        if (!$request->filled('email') && $request->filled('name')) {
+            $baseSlug = \Illuminate\Support\Str::slug($request->name, '.');
+            if (empty($baseSlug)) {
+                $baseSlug = 'usuario' . rand(100, 999);
+            }
+            $email = $baseSlug . '@restaurante.com';
+            
+            $count = 1;
+            while (User::where('email', $email)->exists()) {
+                $email = $baseSlug . $count . '@restaurante.com';
+                $count++;
+            }
+            $request->merge(['email' => $email]);
+        }
+
+        // Auto-generar contraseña por defecto si no se ingresó
+        $passAuto = false;
+        if (!$request->filled('password')) {
+            $request->merge([
+                'password' => '12345678',
+                'password_confirmation' => '12345678'
+            ]);
+            $passAuto = true;
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -30,7 +56,7 @@ class UserController extends Controller
             'role' => 'required|in:admin,cajero,mesero'
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -38,7 +64,10 @@ class UserController extends Controller
             'is_active' => $request->has('is_active'),
         ]);
 
-        return redirect()->route('admin.usuarios.index')->with('success', 'Usuario creado.');
+        $msgPass = $passAuto ? " | Contraseña por defecto: 12345678" : "";
+
+        return redirect()->route('admin.usuarios.index')
+            ->with('success', "✅ Usuario '{$user->name}' creado. Correo: {$user->email}{$msgPass}");
     }
 
     public function edit(string $id)

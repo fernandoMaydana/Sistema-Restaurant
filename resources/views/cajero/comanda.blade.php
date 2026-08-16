@@ -16,9 +16,9 @@
         <div class="text-center font-monospace">
             @if($pedido->mesa->es_para_llevar)
                 <h2 style="font-size: 24pt; margin: 5px 0; font-weight: bold; background: #000; color: #fff; padding: 5px;">* PARA LLEVAR *</h2>
-                <h1 style="font-size: 36pt; margin: 5px 0; font-weight: bold;">PEDIDO {{ $pedido->mesa->numero }}</h1>
+                <h1 style="font-size: 36pt; margin: 5px 0; font-weight: bold;">LLEVAR #{{ $pedido->mesa->numero }}</h1>
             @else
-                <h1 style="font-size: 32pt; margin: 5px 0; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h1>
+                <h1 style="font-size: 36pt; margin: 5px 0; font-weight: bold;">MESA {{ $pedido->mesa->numero }}</h1>
             @endif
             
             <p style="font-size: 8pt; line-height: 1.2; margin: 5px 0; opacity: 0.85;">
@@ -46,9 +46,8 @@
                 @endforelse
             </div>
 
-            <p style="margin-top: 15px; border-top: 1px dashed #000; padding-top: 5px; font-size: 8pt;">
-                #{{ $pedido->id }} - COPIA COCINA<br>
-                *** RESTO-SISTEMA ***
+            <p style="margin-top: 8px; border-top: 1px dashed #000; padding-top: 4px; font-size: 10pt; font-weight: bold; margin-bottom: 0;">
+                #{{ $pedido->numero_turno ?? $pedido->id }} - COCINA
             </p>
         </div>
     </div>
