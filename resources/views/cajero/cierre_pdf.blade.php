@@ -34,47 +34,60 @@
 </div>
 
 <div class="section summary-box">
-    <h2 class="section-title" style="background: none; border-bottom: 1px solid #ccc; padding-left: 0;">Resumen Financiero</h2>
-    <table>
-        <tr>
-            <td width="50%">Monto Inicial:</td>
-            <td width="50%" class="text-right font-bold">Bs {{ number_format($caja->monto_inicial, 2) }}</td>
-        </tr>
-        <tr>
-            <td>Ventas Totales del Turno (+):</td>
-            <td class="text-right font-bold text-success">Bs {{ number_format($totalRecaudado, 2) }}</td>
-        </tr>
-        <tr>
-            <td>Gastos Registrados (-):</td>
-            <td class="text-right font-bold text-danger">-Bs {{ number_format($totalGastos, 2) }}</td>
-        </tr>
-        <tr>
-            <td style="border-top: 2px solid #333; padding-top: 10px;" class="font-bold">EFECTIVO ESTIMADO EN CAJA:</td>
-            <td style="border-top: 2px solid #333; padding-top: 10px;" class="text-right font-bold text-primary" style="font-size: 16px;">
-                Bs {{ number_format($caja->monto_final, 2) }}
-            </td>
-        </tr>
-    </table>
+    <h2 class="section-title" style="background: none; border-bottom: 1px solid #ccc; padding-left: 0; margin-top: 0;">1. Monto Total Vendido del Día</h2>
+    <div style="font-size: 18px; font-weight: bold; color: #198754; text-align: center; margin: 10px 0;">
+        Bs {{ number_format($totalRecaudado, 2) }}
+    </div>
 </div>
 
 <div class="section">
-    <h2 class="section-title">Desglose de Ventas por Método de Pago</h2>
+    <h2 class="section-title">2. Operación Balance de Caja (Desglose)</h2>
     <table>
         <tr>
-            <td width="70%">Efectivo</td>
-            <td class="text-right">Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</td>
+            <td width="60%">(+) Base Inicial en Caja:</td>
+            <td width="40%" class="text-right font-bold">Bs {{ number_format($caja->monto_inicial, 2) }}</td>
         </tr>
         <tr>
-            <td>QR / Transferencia</td>
-            <td class="text-right">Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</td>
+            <td>(+) Ventas Cobradas en Efectivo:</td>
+            <td class="text-right font-bold text-success">+Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</td>
         </tr>
         <tr>
-            <td>Tarjeta</td>
-            <td class="text-right">Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</td>
+            <td>(+) Ventas QR / Transferencia:</td>
+            <td class="text-right font-bold text-primary">+Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</td>
         </tr>
         <tr>
-            <td class="font-bold text-right">TOTAL:</td>
-            <td class="font-bold text-right">Bs {{ number_format($totalRecaudado, 2) }}</td>
+            <td>(+) Ventas Tarjeta:</td>
+            <td class="text-right font-bold text-primary">+Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</td>
+        </tr>
+        @if($gastos->count() > 0)
+        <tr>
+            <td class="text-danger font-bold">(-) Total Gastos Registrados:</td>
+            <td class="text-right font-bold text-danger">-Bs {{ number_format($totalGastos, 2) }}</td>
+        </tr>
+        @endif
+    </table>
+</div>
+
+<div class="section summary-box" style="background: #eef2f7;">
+    <h2 class="section-title" style="background: none; border-bottom: 1px solid #ccc; padding-left: 0; margin-top: 0;">3. Totales y Balances Finales</h2>
+    <table>
+        <tr>
+            <td width="60%" class="font-bold">EFECTIVO EN CAJA (Inicial + Efectivo - Gastos):</td>
+            <td width="40%" class="text-right font-bold text-primary" style="font-size: 14px;">
+                Bs {{ number_format($caja->monto_final, 2) }}
+            </td>
+        </tr>
+        <tr>
+            <td class="font-bold">TOTAL BANCOS / DIGITAL (QR + Tarjeta + Transferencia):</td>
+            <td class="text-right font-bold text-primary" style="font-size: 14px;">
+                Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}
+            </td>
+        </tr>
+        <tr>
+            <td style="border-top: 2px solid #333; padding-top: 8px;" class="font-bold">TOTAL DINERO GENERADO EN EL DÍA:</td>
+            <td style="border-top: 2px solid #333; padding-top: 8px;" class="text-right font-bold" style="font-size: 16px; color: #000;">
+                Bs {{ number_format($caja->monto_final + $ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}
+            </td>
         </tr>
     </table>
 </div>

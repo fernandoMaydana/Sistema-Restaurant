@@ -35,47 +35,68 @@
                 </div>
             </div>
 
-            <div class="bg-primary text-white p-3 rounded-4 text-center mb-4 shadow-sm">
-                <div class="text-uppercase small opacity-75 fw-bold">Efectivo Estimado en Caja</div>
-                <div class="h2 fw-bold mb-0">Bs {{ number_format($caja->monto_final, 2) }}</div>
-                <div style="font-size: 0.75rem;" class="opacity-75">(Inicial + Ventas Efectivo - Gastos)</div>
+            <div class="bg-success text-white p-3 rounded-4 text-center mb-4 shadow-sm">
+                <div class="text-uppercase small opacity-75 fw-bold">1. Monto Total Vendido del Día</div>
+                <div class="h2 fw-bold mb-0">Bs {{ number_format($totalRecaudado, 2) }}</div>
             </div>
 
-            {{-- Desglose por Método --}}
+            {{-- Operación de Caja --}}
             <div class="card bg-light border-0 rounded-4 mb-4">
                 <div class="card-body p-3">
-                    <h6 class="fw-bold text-dark mb-3"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Ventas por Método</h6>
+                    <h6 class="fw-bold text-dark mb-3 border-bottom pb-2">
+                        <i class="bi bi-calculator me-2 text-primary"></i>2. Operación Balance de Caja
+                    </h6>
                     <div class="d-flex justify-content-between mb-2">
-                        <span><i class="bi bi-cash me-2"></i>Efectivo:</span>
-                        <span class="fw-bold">Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</span>
+                        <span><i class="bi bi-plus-circle-fill text-success me-2"></i>Base Inicial en Caja:</span>
+                        <span class="fw-bold">Bs {{ number_format($caja->monto_inicial, 2) }}</span>
                     </div>
                     <div class="d-flex justify-content-between mb-2">
-                        <span><i class="bi bi-qr-code me-2"></i>QR / Transferencia:</span>
-                        <span class="fw-bold">Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</span>
+                        <span><i class="bi bi-plus-circle-fill text-success me-2"></i>Ventas en Efectivo:</span>
+                        <span class="fw-bold text-success">+Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</span>
                     </div>
-                    <div class="d-flex justify-content-between">
-                        <span><i class="bi bi-credit-card me-2"></i>Tarjeta:</span>
-                        <span class="fw-bold">Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</span>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><i class="bi bi-plus-circle-fill text-info me-2"></i>Ventas QR / Transferencia:</span>
+                        <span class="fw-bold text-info">+Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</span>
                     </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span><i class="bi bi-plus-circle-fill text-info me-2"></i>Ventas Tarjeta:</span>
+                        <span class="fw-bold text-info">+Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</span>
+                    </div>
+                    
+                    @if($gastos->count() > 0)
+                        <hr class="my-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="text-danger fw-bold"><i class="bi bi-dash-circle-fill me-2"></i>Gastos (-)</span>
+                            <span class="fw-bold text-danger">-Bs {{ number_format($totalGastos, 2) }}</span>
+                        </div>
+                        <div class="ps-3 mb-2">
+                            @foreach($gastos as $gasto)
+                                <div class="d-flex justify-content-between small text-muted">
+                                    <span>• {{ $gasto->descripcion }}</span>
+                                    <span>-Bs {{ number_format($gasto->monto, 2) }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
                 </div>
             </div>
 
-            {{-- Detalle de Gastos --}}
-            @if($gastos->count() > 0)
-                <div class="mb-4">
-                    <h6 class="fw-bold text-danger mb-3"><i class="bi bi-dash-circle-fill me-2"></i>Detalle de Gastos (-Bs {{ number_format($totalGastos, 2) }})</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm table-borderless mb-0" style="font-size: 0.9rem;">
-                            @foreach($gastos as $gasto)
-                                <tr>
-                                    <td class="ps-0">{{ $gasto->descripcion }}</td>
-                                    <td class="text-end pe-0 text-danger fw-bold">-Bs {{ number_format($gasto->monto, 2) }}</td>
-                                </tr>
-                            @endforeach
-                        </table>
-                    </div>
+            {{-- Totales Finales --}}
+            <div class="border rounded-4 p-3 mb-4 bg-white shadow-sm">
+                <h6 class="fw-bold text-dark mb-3"><i class="bi bi-wallet2 me-2 text-primary"></i>3. Totales y Balances Finales</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-primary bg-opacity-10 rounded-3">
+                    <span class="fw-bold text-primary"><i class="bi bi-cash-stack me-2"></i>Efectivo en Caja:</span>
+                    <span class="h5 fw-bold mb-0 text-primary">Bs {{ number_format($caja->monto_final, 2) }}</span>
                 </div>
-            @endif
+                <div class="d-flex justify-content-between align-items-center mb-2 p-2 bg-info bg-opacity-10 rounded-3">
+                    <span class="fw-bold text-info"><i class="bi bi-bank me-2"></i>Total Bancos / Digital:</span>
+                    <span class="h5 fw-bold mb-0 text-info">Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center p-2 bg-dark text-white rounded-3">
+                    <span class="fw-bold"><i class="bi bi-currency-dollar me-2"></i>TOTAL DINERO DEL DÍA:</span>
+                    <span class="h5 fw-bold mb-0 text-warning">Bs {{ number_format($caja->monto_final + $ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}</span>
+                </div>
+            </div>
 
             <h5 class="fw-bold mb-3 mt-4"><i class="bi bi-list-check me-2"></i>Resumen de Productos</h5>
             @foreach($resumen as $categoria => $productos)
@@ -117,54 +138,65 @@
             --------------------------------<br>
             Cajero: {{ $caja->user->name }}<br>
             Fecha: {{ \Carbon\Carbon::parse($caja->fecha_cierre)->format('d/m/Y H:i') }}<br>
-            --------------------------------
+            ================================
         </p>
 
         <div style="text-align: left; font-size: 11pt;">
-            <div style="display: flex; justify-content: space-between;">
-                <span>Monto Inicial:</span>
-                <span>Bs {{ number_format($caja->monto_inicial, 2) }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span>Ventas Totales:</span>
+            <div style="font-weight: bold; font-size: 12pt; display: flex; justify-content: space-between; border-bottom: 1px solid #000; padding-bottom: 3px;">
+                <span>1. TOTAL VENDIDO DÍA:</span>
                 <span>Bs {{ number_format($totalRecaudado, 2) }}</span>
             </div>
-            <div style="margin: 5px 0; border-top: 1px dotted #000;"></div>
             
-            <div style="font-size: 9pt;">
+            <p style="margin: 5px 0 2px 0; font-weight: bold; font-size: 9pt;">2. OPERACIÓN DE CAJA:</p>
+            <div style="font-size: 9.5pt; padding-left: 5px;">
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Ventas Efectivo:</span>
-                    <span>Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</span>
+                    <span>(+) Base Inicial:</span>
+                    <span>Bs {{ number_format($caja->monto_inicial, 2) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Ventas QR/Trans:</span>
-                    <span>Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</span>
+                    <span>(+) Ventas Efectivo:</span>
+                    <span>+Bs {{ number_format($ventasPorMetodo['efectivo'], 2) }}</span>
                 </div>
                 <div style="display: flex; justify-content: space-between;">
-                    <span>Ventas Tarjeta:</span>
-                    <span>Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</span>
+                    <span>(+) Ventas QR/Trans:</span>
+                    <span>+Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2) }}</span>
                 </div>
+                <div style="display: flex; justify-content: space-between;">
+                    <span>(+) Ventas Tarjeta:</span>
+                    <span>+Bs {{ number_format($ventasPorMetodo['tarjeta'], 2) }}</span>
+                </div>
+                
+                @if($gastos->count() > 0)
+                    <div style="margin-top: 3px; border-top: 1px dotted #000; padding-top: 3px;">
+                        <div style="font-weight: bold; font-size: 9pt;">(-) GASTOS REGISTRADOS:</div>
+                        @foreach($gastos as $gasto)
+                            <div style="display: flex; justify-content: space-between; font-size: 8.5pt; color: #333;">
+                                <span>• {{ substr($gasto->descripcion, 0, 18) }}</span>
+                                <span>-Bs {{ number_format($gasto->monto, 2) }}</span>
+                            </div>
+                        @endforeach
+                        <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 9pt;">
+                            <span>TOTAL GASTOS:</span>
+                            <span>-Bs {{ number_format($totalGastos, 2) }}</span>
+                        </div>
+                    </div>
+                @endif
             </div>
 
-            @if($gastos->count() > 0)
-                <div style="margin-top: 5px; border-top: 1px dotted #000; padding-top: 5px;">
-                    <span style="font-weight: bold; font-size: 9pt;">GASTOS (-)</span>
-                    @foreach($gastos as $gasto)
-                        <div style="display: flex; justify-content: space-between; font-size: 9pt;">
-                            <span>{{ substr($gasto->descripcion, 0, 20) }}</span>
-                            <span>-Bs {{ number_format($gasto->monto, 2) }}</span>
-                        </div>
-                    @endforeach
-                    <div style="display: flex; justify-content: space-between; font-weight: bold;">
-                        <span>TOTAL GASTOS:</span>
-                        <span>-Bs {{ number_format($totalGastos, 2) }}</span>
-                    </div>
+            <div style="margin-top: 8px; border-top: 1px dashed #000; padding-top: 5px;">
+                <p style="margin: 0 0 3px 0; font-weight: bold; font-size: 9pt;">3. TOTALES Y BALANCES:</p>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11pt; background: #eee; padding: 2px;">
+                    <span>💵 EFECTIVO CAJA:</span>
+                    <span>Bs {{ number_format($caja->monto_final, 2) }}</span>
                 </div>
-            @endif
-
-            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13pt; margin-top: 5px; border-top: 1px dashed #000; padding-top: 5px; background: #eee;">
-                <span>EFECTIVO CAJA:</span>
-                <span>Bs {{ number_format($caja->monto_final, 2) }}</span>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 10pt; margin-top: 2px;">
+                    <span>💳 TOTAL DIGITAL:</span>
+                    <span>Bs {{ number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 11pt; border-top: 1px double #000; margin-top: 3px; padding-top: 2px;">
+                    <span>💰 TOTAL DINERO DÍA:</span>
+                    <span>Bs {{ number_format($caja->monto_final + $ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'], 2) }}</span>
+                </div>
             </div>
         </div>
 

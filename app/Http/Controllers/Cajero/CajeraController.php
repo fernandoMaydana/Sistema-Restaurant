@@ -1105,7 +1105,7 @@ class CajeraController extends Controller
             $printer->setJustification(Printer::JUSTIFY_LEFT);
             $printer->text("Cajero: " . $caja->user->name . "\n");
             $printer->text("Fecha: " . \Carbon\Carbon::parse($caja->fecha_cierre ?? now())->format('d/m/Y H:i') . "\n");
-            $printer->text(str_repeat("-", $cols) . "\n\n");
+            $printer->text(str_repeat("=", $cols) . "\n\n");
 
             // Helper para formatear línea izquierda/derecha
             $formatoLinea = function($desc, $monto) use ($cols) {
@@ -1113,40 +1113,56 @@ class CajeraController extends Controller
                 return $desc . str_repeat(" ", $espacios) . $monto;
             };
 
-            $printer->text($formatoLinea("Monto Inicial:", "Bs " . number_format($caja->monto_inicial, 2)) . "\n");
-            $printer->text($formatoLinea("Ventas Totales:", "Bs " . number_format($totalVentas, 2)) . "\n");
+            // 1. TOTAL VENDIDO DEL DÍA
+            $printer->setEmphasis(true);
+            $printer->text($formatoLinea("1. TOTAL VENDIDO DÍA:", "Bs " . number_format($totalVentas, 2)) . "\n");
+            $printer->setEmphasis(false);
             $printer->text(str_repeat("-", $cols) . "\n");
-            $printer->text($formatoLinea("Ventas Efectivo:", "Bs " . number_format($ventasPorMetodo['efectivo'], 2)) . "\n");
-            $printer->text($formatoLinea("Ventas QR:", "Bs " . number_format($ventasPorMetodo['qr'], 2)) . "\n");
-            $printer->text($formatoLinea("Ventas Tarjeta:", "Bs " . number_format($ventasPorMetodo['tarjeta'], 2)) . "\n");
-            $printer->text($formatoLinea("Ventas Transf.:", "Bs " . number_format($ventasPorMetodo['transferencia'], 2)) . "\n");
+
+            // 2. OPERACIÓN DE CAJA (DESGLOSE)
+            $printer->setEmphasis(true);
+            $printer->text("2. OPERACIÓN DE CAJA:\n");
+            $printer->setEmphasis(false);
+            $printer->text($formatoLinea("  (+) Base Inicial:", "Bs " . number_format($caja->monto_inicial, 2)) . "\n");
+            $printer->text($formatoLinea("  (+) Ventas Efectivo:", "+Bs " . number_format($ventasPorMetodo['efectivo'], 2)) . "\n");
+            $printer->text($formatoLinea("  (+) Ventas QR/Transf:", "+Bs " . number_format($ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'], 2)) . "\n");
+            $printer->text($formatoLinea("  (+) Ventas Tarjeta:", "+Bs " . number_format($ventasPorMetodo['tarjeta'], 2)) . "\n");
             
             if ($gastos->count() > 0) {
-                $printer->text(str_repeat("-", $cols) . "\n");
+                $printer->text(str_repeat(".", $cols) . "\n");
                 $printer->setEmphasis(true);
-                $printer->text("GASTOS (-)\n");
+                $printer->text("  (-) GASTOS REGISTRADOS:\n");
                 $printer->setEmphasis(false);
                 foreach ($gastos as $gasto) {
-                    $descLimit = $cols - 12; // Dejar espacio para monto
-                    $desc = substr($gasto->descripcion, 0, $descLimit);
+                    $descLimit = $cols - 14;
+                    $desc = "   • " . substr($gasto->descripcion, 0, $descLimit);
                     $monto = "-Bs " . number_format($gasto->monto, 2);
                     $printer->text($formatoLinea($desc, $monto) . "\n");
                 }
-                $txtTotalG = "TOTAL GASTOS:";
-                $montoTotalG = "-Bs " . number_format($totalGastos, 2);
                 $printer->setEmphasis(true);
-                $printer->text($formatoLinea($txtTotalG, $montoTotalG) . "\n");
+                $printer->text($formatoLinea("  TOTAL GASTOS:", "-Bs " . number_format($totalGastos, 2)) . "\n");
                 $printer->setEmphasis(false);
             }
 
+            // 3. TOTALES Y BALANCES
             $printer->text(str_repeat("-", $cols) . "\n");
+            $printer->setEmphasis(true);
+            $printer->text("3. TOTALES Y BALANCES:\n");
+            $printer->setEmphasis(false);
+
             $printer->setTextSize(1, 2);
-            $txtEfectivo = "EFECTIVO CAJA:";
-            $montoEfectivo = "Bs " . number_format($caja->monto_final, 2);
-            $printer->text($formatoLinea($txtEfectivo, $montoEfectivo) . "\n");
+            $printer->text($formatoLinea("EFECTIVO CAJA:", "Bs " . number_format($caja->monto_final, 2)) . "\n");
             $printer->setTextSize(1, 1);
+
+            $totalDigital = $ventasPorMetodo['qr'] + $ventasPorMetodo['transferencia'] + $ventasPorMetodo['tarjeta'];
+            $printer->text($formatoLinea("TOTAL DIGITAL:", "Bs " . number_format($totalDigital, 2)) . "\n");
             
-            $printer->text("\n" . str_repeat("-", $cols) . "\n");
+            $totalDineroDia = $caja->monto_final + $totalDigital;
+            $printer->setEmphasis(true);
+            $printer->text($formatoLinea("TOTAL DINERO DÍA:", "Bs " . number_format($totalDineroDia, 2)) . "\n");
+            $printer->setEmphasis(false);
+
+            $printer->text("\n" . str_repeat("=", $cols) . "\n");
             $printer->setJustification(Printer::JUSTIFY_CENTER);
             $printer->setEmphasis(true);
             $printer->text("RESUMEN DE PRODUCTOS\n");
