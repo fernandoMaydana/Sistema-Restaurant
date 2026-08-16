@@ -37,10 +37,11 @@ Auth::routes();
 // 3. El "Distribuidor": Esta ruta decide a qué panel enviarte según tu rol
 Route::get('/home', [HomeController::class, 'index'])->name('home');
 
-// 4. Perfil de Usuario
+// 4. Perfil de Usuario y Manual de Ayuda
 Route::middleware(['auth'])->group(function () {
     Route::get('/perfil', [App\Http\Controllers\PerfilController::class, 'edit'])->name('perfil.edit');
     Route::put('/perfil', [App\Http\Controllers\PerfilController::class, 'update'])->name('perfil.update');
+    Route::get('/ayuda', [App\Http\Controllers\AyudaController::class, 'index'])->name('ayuda.index');
 });
 
 // ==========================================================

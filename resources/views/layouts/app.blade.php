@@ -197,6 +197,12 @@
                                 </li>
                             @endif
                         @else
+                            <li class="nav-item me-2">
+                                <a class="btn btn-light border btn-sm text-dark fw-bold rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" href="{{ route('ayuda.index') }}" title="Manual e Instrucciones del Sistema">
+                                    <i class="bi bi-book-half text-primary"></i> Manual / Ayuda
+                                </a>
+                            </li>
+
                             <li class="nav-item dropdown">
                                 <a id="navbarDropdown" class="nav-link dropdown-toggle d-flex align-items-center gap-2"
                                    href="#" role="button" data-bs-toggle="dropdown">
@@ -211,6 +217,9 @@
                                 <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                                     <a class="dropdown-item" href="{{ route('perfil.edit') }}">
                                         <i class="bi bi-person me-2 text-primary"></i>Mi Perfil
+                                    </a>
+                                    <a class="dropdown-item" href="{{ route('ayuda.index') }}">
+                                        <i class="bi bi-book me-2 text-warning"></i>Manual e Instrucciones
                                     </a>
                                     <div class="dropdown-divider"></div>
                                     <a class="dropdown-item text-danger"
