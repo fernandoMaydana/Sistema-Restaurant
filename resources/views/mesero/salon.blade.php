@@ -4,35 +4,12 @@
 <div class="container-fluid px-4 py-3">
 
     {{-- Header --}}
-    <div class="d-flex justify-content-center align-items-center mb-4 position-relative">
-        <h2 class="fw-bold fs-3 mb-0 text-center">🪑 Salón de Mesas</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4 px-1">
+        <h2 class="fw-bold fs-3 mb-0"><i class="bi bi-grid-fill me-2 text-primary"></i>Salón de Mesas</h2>
+        <button type="button" class="btn btn-light border shadow-2xs rounded-circle p-2 d-flex align-items-center justify-content-center" onclick="toggleTheme()" title="Modo Oscuro / Claro" style="width: 38px; height: 38px;">
+            <i class="bi bi-moon-stars-fill theme-toggle-icon text-warning fs-5"></i>
+        </button>
     </div>
-
-    {{-- Leyenda --}}
-    <div class="d-flex gap-3 mb-4 flex-wrap">
-        <span class="d-flex align-items-center gap-1"><span style="width:14px;height:14px;background:#28a745;border-radius:50%;display:inline-block;"></span> Libre</span>
-        <span class="d-flex align-items-center gap-1"><span style="width:14px;height:14px;background:#dc3545;border-radius:50%;display:inline-block;"></span> Ocupada</span>
-    </div>
-
-    {{-- Toast de pedido registrado --}}
-    @if(session('pedido_registrado'))
-        <div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
-            <div id="toastPedido" class="toast align-items-center text-white bg-success border-0 show" role="alert">
-                <div class="d-flex">
-                    <div class="toast-body fw-bold fs-6">
-                        {{ session('pedido_registrado') }}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-                </div>
-            </div>
-        </div>
-        <script>
-            setTimeout(() => {
-                const el = document.getElementById('toastPedido');
-                if (el) el.classList.remove('show');
-            }, 4000);
-        </script>
-    @endif
 
     {{-- Cuadrícula de mesas responsiva para móvil --}}
     <div class="row g-3 px-1">
@@ -43,30 +20,27 @@
             @endphp
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 border-0 text-center shadow-sm"
-                     style="border-radius: 16px; overflow: hidden; background-color: {{ $libre ? '#f8fff9' : '#fff5f6' }};">
+                <div class="card h-100 border text-center shadow-sm"
+                     style="border-radius: 18px; overflow: hidden; border-color: {{ $libre ? '#e2e8f0' : '#fca5a5' }} !important;">
                      
                     {{-- Borde superior de color --}}
-                    <div style="height: 6px; width: 100%; background: {{ $libre ? '#28a745' : '#dc3545' }};"></div>
+                    <div style="height: 6px; width: 100%; background: {{ $libre ? '#10b981' : '#ef4444' }};"></div>
 
                     <div class="card-body p-3 d-flex flex-column">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <span class="badge {{ $libre ? 'bg-success' : 'bg-danger' }} rounded-pill" style="font-size: 0.7rem;">
-                                {{ $libre ? 'Libre' : 'Ocupada' }}
-                            </span>
-                            <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-people-fill"></i> {{ $mesa->capacidad }}</small>
+                        <div class="d-flex justify-content-end align-items-center mb-2">
+                            <small class="text-muted" style="font-size: 0.75rem;"><i class="bi bi-people-fill"></i> {{ $mesa->capacidad }} cap.</small>
                         </div>
                         
                         <h4 class="fw-bold mb-0 text-dark">
                             @if($mesa->es_para_llevar)
-                                🛍️ Llevar {{ $mesa->numero }}
+                                <i class="bi bi-bag-fill text-primary me-1"></i> Llevar {{ $mesa->numero }}
                             @else
                                 Mesa {{ $mesa->numero }}
                             @endif
                         </h4>
                         
                         @if(!$libre)
-                            <div class="mt-2 text-success fw-bold">
+                            <div class="mt-2 text-danger fw-bold fs-5">
                                 Bs {{ number_format($pedidoActivo->total, 2) }}
                             </div>
                         @else
@@ -77,11 +51,11 @@
 
                         <div class="mt-auto pt-3">
                             @if(!$libre)
-                                <button type="button" class="btn w-100 fw-bold" data-bs-toggle="offcanvas" data-bs-target="#mesa-offcanvas-{{ $mesa->id }}" style="background-color: #ffebee; color: #c62828; border-radius: 10px; font-size: 0.9rem;">
+                                <button type="button" class="btn btn-outline-danger w-100 fw-bold shadow-2xs py-2" data-bs-toggle="offcanvas" data-bs-target="#mesa-offcanvas-{{ $mesa->id }}" style="border-radius: 10px; font-size: 0.9rem;">
                                     <i class="bi bi-receipt me-1"></i> Ver Mesa
                                 </button>
                             @else
-                                <a href="{{ route('mesero.mesa', $mesa->id) }}" class="btn w-100 fw-bold" style="background-color: #e8f5e9; color: #2e7d32; border-radius: 10px; font-size: 0.9rem;">
+                                <a href="{{ route('mesero.mesa', $mesa->id) }}" class="btn btn-success w-100 fw-bold shadow-2xs py-2 text-white" style="border-radius: 10px; font-size: 0.9rem; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
                                     <i class="bi bi-plus-circle me-1"></i> Atender Mesa
                                 </a>
                             @endif
@@ -106,13 +80,13 @@
         @php $pedidoActivo = $mesa->pedidos->first(); @endphp
         @if($pedidoActivo)
             <div class="offcanvas offcanvas-bottom rounded-top-4" tabindex="-1" id="mesa-offcanvas-{{ $mesa->id }}" style="height: 80vh;">
-                <div class="offcanvas-header border-bottom px-3 py-3 bg-light rounded-top-4">
+                <div class="offcanvas-header border-bottom px-3.5 py-3 bg-white rounded-top-4">
                     <div>
-                        <h5 class="offcanvas-title fw-bold mb-0">
+                        <h5 class="offcanvas-title fw-bold mb-0 text-dark">
                             @if($mesa->es_para_llevar)
-                                🛍️ Detalle Llevar #{{ $mesa->numero }}
+                                <i class="bi bi-bag-fill text-primary me-1"></i> Detalle Llevar #{{ $mesa->numero }}
                             @else
-                                🧾 Detalle Mesa {{ $mesa->numero }}
+                                <i class="bi bi-receipt-cutoff text-primary me-1"></i> Detalle Mesa {{ $mesa->numero }}
                             @endif
                         </h5>
                         <span class="text-muted" style="font-size: 0.85rem;">Pedido {{ $pedidoActivo->estado === 'cuenta_solicitada' ? '(Cuenta Solicitada)' : 'Abierto' }}</span>
@@ -121,24 +95,45 @@
                 </div>
                 <div class="offcanvas-body p-0 overflow-auto">
                     @if($pedidoActivo->detalles->count() > 0)
-                        <ul class="list-group list-group-flush">
-                            @foreach($pedidoActivo->detalles as $det)
-                                <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-3">
+                        @php
+                            $detallesAgrupados = [];
+                            foreach($pedidoActivo->detalles as $det) {
+                                $key = $det->nombre_mostrar . '_' . $det->precio_unitario;
+                                if (!isset($detallesAgrupados[$key])) {
+                                    $detallesAgrupados[$key] = [
+                                        'nombre' => $det->nombre_mostrar,
+                                        'precio' => $det->precio_unitario,
+                                        'cantidad' => 0,
+                                        'estado' => $det->estado_comanda,
+                                    ];
+                                }
+                                $detallesAgrupados[$key]['cantidad'] += $det->cantidad;
+                            }
+                        @endphp
+                        <ul class="list-group list-group-flush border-bottom">
+                            @foreach($detallesAgrupados as $item)
+                                <li class="list-group-item d-flex justify-content-between align-items-center py-3 px-3.5">
                                     <div class="d-flex flex-column">
-                                        <span class="fw-bold text-dark" style="font-size: 0.95rem;">{{ $det->nombre_mostrar }}</span>
-                                        <div class="d-flex align-items-center gap-2 mt-1">
-                                            <span class="text-muted" style="font-size: 0.85rem;">Bs {{ number_format($det->precio_unitario, 2) }}</span>
-                                            @if($det->estado_comanda === 'pendiente')
-                                                <span class="badge bg-warning text-dark" style="font-size:0.65rem">Pendiente</span>
+                                        <span class="fw-bold text-dark fs-5 mb-0.5" style="line-height: 1.2;">{{ $item['nombre'] }}</span>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <span class="text-muted" style="font-size: 0.82rem;">Bs {{ number_format($item['precio'], 2) }} c/u</span>
+                                            @if($item['estado'] === 'pendiente')
+                                                <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 rounded-pill" style="font-size:0.65rem">
+                                                    <i class="bi bi-clock me-0.5"></i>Pendiente
+                                                </span>
                                             @else
-                                                <span class="badge bg-success" style="font-size:0.65rem">En cocina</span>
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size:0.65rem">
+                                                    <i class="bi bi-check-circle me-0.5"></i>En cocina
+                                                </span>
                                             @endif
                                         </div>
                                     </div>
-                                    <div class="text-end d-flex flex-column align-items-end">
-                                        <span class="badge bg-light text-dark border">x{{ $det->cantidad }}</span>
-                                        <strong class="mt-1 text-success" style="font-size: 0.95rem;">
-                                            Bs {{ number_format($det->cantidad * $det->precio_unitario, 2) }}
+                                    <div class="text-end d-flex align-items-center gap-2">
+                                        <span class="badge bg-secondary-subtle text-body border rounded-pill px-2.5 py-1 fw-bold" style="font-size: 0.8rem;">
+                                            {{ $item['cantidad'] }} ud.
+                                        </span>
+                                        <strong class="text-success fs-6" style="min-width: 70px;">
+                                            Bs {{ number_format($item['cantidad'] * $item['precio'], 2) }}
                                         </strong>
                                     </div>
                                 </li>

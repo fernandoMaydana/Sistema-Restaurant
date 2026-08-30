@@ -87,48 +87,82 @@
                                 $pedidoActivo = $mesa->pedidos->first();
                                 $libre = !$pedidoActivo;
                                 $reservaHoy = $reservas->where('mesa_id', $mesa->id)->where('estado', 'pendiente')->first();
+                                $cantItems = $pedidoActivo ? $pedidoActivo->detalles->sum('cantidad') : 0;
                             @endphp
 
                             <div class="col mesa-col" data-numero="{{ $mesa->numero }}">
-                                <div class="card h-100 border-0 text-center shadow-sm mesa-card" 
+                                <div class="card h-100 border-0 shadow-sm mesa-card text-center {{ $libre ? 'mesa-card-libre' : 'mesa-card-ocupada' }}" 
                                      onclick="mostrarDetalle('{{ $mesa->id }}')"
                                      ondblclick="window.location.href='{{ route('cajero.mesa', $mesa->id) }}'"
                                      title="Un clic: ver detalle | Doble clic: atender mesa"
-                                     style="cursor: pointer; border-radius: 12px; overflow: hidden; transition: all 0.2s; background-color: {{ $libre ? '#f8fff9' : '#fff9f9' }};">
+                                     style="cursor: pointer;">
                                      
-                                    <div style="height: 5px; width: 100%; background: {{ $libre ? '#2ec4b6' : '#e63946' }};"></div>
-
-                                    <div class="card-body p-3 d-flex flex-column align-items-center">
-                                        <h4 class="fw-bold mb-1 text-dark">
-                                            MESA {{ $mesa->numero }}
-                                        </h4>
-
+                                    <div class="px-3 pt-3 pb-1 d-flex justify-content-between align-items-center">
+                                        <span class="d-flex align-items-center gap-1">
+                                            <span class="mesa-status-indicator {{ $libre ? 'status-libre' : 'status-ocupada' }}"></span>
+                                            <small class="fw-bold text-uppercase mesa-status-text" style="font-size: 0.7rem;">
+                                                {{ $libre ? 'LIBRE' : 'OCUPADA' }}
+                                            </small>
+                                        </span>
                                         @if($reservaHoy)
-                                            <div class="my-1">
-                                                <span class="badge bg-primary text-white px-2 py-1 rounded-pill" style="font-size: 0.65rem;" title="Reservada para {{ $reservaHoy->cliente_nombre }}">
-                                                    <i class="bi bi-calendar-check-fill me-1"></i>Res. {{ \Carbon\Carbon::parse($reservaHoy->hora)->format('H:i') }}
-                                                </span>
-                                            </div>
+                                            <span class="badge bg-purple text-white px-2 py-1 rounded-pill" style="font-size: 0.65rem; background-color: #8b5cf6;" title="Reservada para {{ $reservaHoy->cliente_nombre }}">
+                                                <i class="bi bi-bookmark-star-fill"></i> {{ \Carbon\Carbon::parse($reservaHoy->hora)->format('H:i') }}
+                                            </span>
                                         @endif
+                                    </div>
+
+                                    <div class="card-body p-3 d-flex flex-column align-items-center justify-content-between">
+                                        <div>
+                                            <div class="rounded-circle d-inline-flex align-items-center justify-content-center mb-2 mesa-icon-circle" style="width: 48px; height: 48px;">
+                                                <i class="bi bi-grid-3x3-gap-fill fs-4 mesa-icon"></i>
+                                            </div>
+                                            <h4 class="fw-black mb-1 mesa-title">
+                                                MESA {{ $mesa->numero }}
+                                            </h4>
+                                        </div>
                                         
                                         @if(!$libre)
-                                            <div class="mt-2 mb-1">
-                                                <span class="badge bg-light text-dark border px-2 py-1" style="font-size: 0.7rem;">
-                                                    <i class="bi bi-clock me-1"></i>Hace {{ $pedidoActivo->created_at->diff(now())->format('%H:%I') }} h
-                                                </span>
-                                            </div>
-                                            
-                                            <div class="text-muted small mb-2" style="font-size: 0.8rem;">
-                                                <i class="bi bi-person-fill"></i> {{ $pedidoActivo->mesero->name }}
-                                            </div>
+                                            <div class="w-100 my-2">
+                                                <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
+                                                    <span class="badge px-2 py-1 rounded-pill bg-danger-subtle text-danger border border-danger-subtle" style="font-size: 0.7rem;">
+                                                        <i class="bi bi-clock me-1"></i>{{ $pedidoActivo->created_at->diff(now())->format('%H:%I') }} h
+                                                    </span>
+                                                    @if($cantItems > 0)
+                                                        <span class="badge px-2 py-1 rounded-pill bg-info-subtle text-info-emphasis border border-info-subtle" style="font-size: 0.7rem;">
+                                                            <i class="bi bi-bag-check me-1"></i>{{ $cantItems }} ítems
+                                                        </span>
+                                                    @endif
+                                                </div>
+                                                
+                                                <div class="small mb-1 text-truncate fw-medium text-center" style="font-size: 0.78rem; color: #991b1b;">
+                                                    <i class="bi bi-person-circle me-1"></i>{{ $pedidoActivo->mesero->name }}
+                                                </div>
 
-                                            <div class="text-success fw-bold h3 mb-3">
-                                                Bs {{ number_format($pedidoActivo->total, 2) }}
+                                                {{-- Botones de impresión rápida centrados (Solo Iconos) --}}
+                                                <div class="d-flex justify-content-center align-items-center gap-2 my-1.5">
+                                                    <button type="button" 
+                                                            onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.cuenta', $pedidoActivo->id) }}')" 
+                                                            class="btn btn-sm btn-light border rounded-circle p-2 d-flex align-items-center justify-content-center text-primary shadow-2xs" 
+                                                            title="Imprimir Pre-Cuenta Rápida" style="width: 34px; height: 34px;">
+                                                        <i class="bi bi-receipt fs-6"></i>
+                                                    </button>
+                                                    <button type="button" 
+                                                            onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.comanda', $pedidoActivo->id) }}')" 
+                                                            class="btn btn-sm btn-light border rounded-circle p-2 d-flex align-items-center justify-content-center text-warning-emphasis shadow-2xs" 
+                                                            title="Imprimir Comanda Rápida" style="width: 34px; height: 34px;">
+                                                        <i class="bi bi-printer-fill fs-6"></i>
+                                                    </button>
+                                                </div>
+
+                                                <div class="fw-bold fs-4 mb-0 text-success text-center">
+                                                    Bs {{ number_format($pedidoActivo->total, 2) }}
+                                                </div>
                                             </div>
                                         @else
-                                            <div class="py-4 text-muted opacity-50">
-                                                <i class="bi bi-check2-circle display-6 mb-2 d-block"></i>
-                                                <span class="small fw-bold text-uppercase">Libre</span>
+                                            <div class="py-3 text-muted">
+                                                <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill" style="font-size: 0.75rem;">
+                                                    <i class="bi bi-plus-circle me-1"></i>Disponible
+                                                </span>
                                             </div>
                                         @endif
                                     </div>
@@ -252,39 +286,53 @@
 
                             <hr class="my-3 opacity-10">
 
-                            {{-- Lista de Items --}}
-                            <div class="flex-grow-1 overflow-auto mb-4" style="max-height: 40vh;">
-                                <h6 class="fw-bold text-uppercase mb-3" style="font-size: 0.75rem; letter-spacing: 1px;">Consumo Actual</h6>
+                            {{-- Lista de Items Agrupados para Máxima Claridad --}}
+                            <div class="flex-grow-1 overflow-auto mb-3 pe-1" style="max-height: 38vh;">
+                                <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+                                    <h6 class="fw-bold text-uppercase mb-0 text-muted" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                        <i class="bi bi-basket2 me-1"></i>Consumo Resumido ({{ $pedidoActivo->detalles->sum('cantidad') }} ítems totales)
+                                    </h6>
+                                </div>
                                 <ul class="list-group list-group-flush gap-2">
-                                    @foreach($pedidoActivo->detalles as $det)
-                                        <li class="list-group-item d-flex align-items-center justify-content-between p-3 border rounded-3 mb-2 bg-light bg-opacity-25 consumo-item" style="border-color: #eef1f6 !important; border-radius: 12px !important;">
-                                            <div class="d-flex align-items-center gap-3">
-                                                {{-- Cantidad en Badge destacado --}}
-                                                <div class="bg-primary-subtle text-primary border border-primary-subtle d-flex align-items-center justify-content-center fw-bold rounded-3" style="width: 42px; height: 42px; font-size: 1.1rem; flex-shrink: 0; min-width: 42px;">
-                                                    {{ $det->cantidad }}
+                                    @php
+                                        // Agrupar productos idénticos para que el cajero vea cantidades consolidadas sin filas duplicadas
+                                        $itemsAgrupados = $pedidoActivo->detalles->groupBy(function($d) {
+                                            return $d->nombre_mostrar . '|' . number_format($d->precio_unitario, 2);
+                                        });
+                                    @endphp
+
+                                    @foreach($itemsAgrupados as $clave => $grupo)
+                                        @php
+                                            $primerDetalle = $grupo->first();
+                                            $cantidadTotal = $grupo->sum('cantidad');
+                                            $subtotalGrupo = $grupo->sum(fn($g) => $g->cantidad * $g->precio_unitario);
+                                            $tienePendientes = $grupo->contains('estado_comanda', 'pendiente');
+                                        @endphp
+                                        <li class="list-group-item d-flex align-items-center justify-content-between p-2.5 border-0 rounded-3 shadow-sm mb-1 consumo-item" style="border-radius: 12px !important;">
+                                            <div>
+                                                {{-- Nombre del Producto --}}
+                                                <div class="fw-bold mb-0 text-truncate" style="font-size: 0.95rem; line-height: 1.2; max-width: 200px;">
+                                                    {{ $primerDetalle->nombre_mostrar }}
                                                 </div>
-                                                <div>
-                                                    {{-- Nombre del Producto grande --}}
-                                                    <div class="fw-bold text-dark mb-0" style="font-size: 1.05rem; line-height: 1.2;">
-                                                        {{ $det->nombre_mostrar }}
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
-                                                        <span class="text-muted small">Bs {{ number_format($det->precio_unitario, 2) }} c/u</span>
-                                                        @if($det->estado_comanda === 'pendiente')
-                                                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
-                                                                Pendiente
-                                                            </span>
-                                                        @else
-                                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
-                                                                En Cocina
-                                                            </span>
-                                                        @endif
-                                                    </div>
+                                                <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                                                    <span class="text-muted small" style="font-size: 0.75rem;">Bs {{ number_format($primerDetalle->precio_unitario, 2) }} c/u</span>
+                                                    @if($tienePendientes)
+                                                        <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
+                                                            <i class="bi bi-clock me-1"></i>Pendiente
+                                                        </span>
+                                                    @else
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
+                                                            <i class="bi bi-check-circle me-1"></i>En Cocina
+                                                        </span>
+                                                    @endif
                                                 </div>
                                             </div>
-                                            {{-- Precio Subtotal --}}
-                                            <div class="text-end ps-2">
-                                                <span class="fw-bold text-dark fs-5">Bs {{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
+                                            {{-- Lado Derecho: Cantidad + Precio Subtotal acumulado --}}
+                                            <div class="text-end ps-2 d-flex flex-column align-items-end justify-content-center">
+                                                <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-0.5 fw-black mb-1" style="font-size: 0.78rem;">
+                                                    {{ $cantidadTotal }} ud.
+                                                </span>
+                                                <span class="fw-black fs-6">Bs {{ number_format($subtotalGrupo, 2) }}</span>
                                             </div>
                                         </li>
                                     @endforeach
@@ -294,12 +342,12 @@
                             {{-- Botones de Impresión Térmica --}}
                             <div class="row g-2 mb-3">
                                 <div class="col-6">
-                                    <button type="button" onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.comanda', $pedidoActivo->id) }}')" class="btn btn-outline-primary w-100 py-2 rounded-3" title="Imprimir Comanda Cocina">
+                                    <button type="button" onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.comanda', $pedidoActivo->id) }}')" class="btn btn-outline-primary w-100 py-2 rounded-3 fw-bold btn-sm shadow-sm" title="Imprimir Comanda Cocina">
                                         <i class="bi bi-printer me-1"></i> Comanda
                                     </button>
                                 </div>
                                 <div class="col-6">
-                                    <button type="button" onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.cuenta', $pedidoActivo->id) }}')" class="btn btn-outline-dark w-100 py-2 rounded-3" title="Imprimir Pre-cuenta">
+                                    <button type="button" onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.cuenta', $pedidoActivo->id) }}')" class="btn btn-outline-secondary w-100 py-2 rounded-3 fw-bold btn-sm shadow-sm" title="Imprimir Pre-cuenta">
                                         <i class="bi bi-receipt me-1"></i> Pre-cuenta
                                     </button>
                                 </div>
@@ -317,81 +365,53 @@
                                 </div>
                             @endif
 
-                            {{-- Acciones Avanzadas de Mesa --}}
-                            <div class="card border-0 bg-light p-2 mb-3 rounded-4">
-                                <div class="text-muted fw-bold small mb-2 px-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">⚡ ACCIONES DE MESA</div>
-                                <div class="row g-2">
-                                    {{-- 1. Cambiar Mesa --}}
-                                    <div class="col-6">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalCambiarMesa('{{ $pedidoActivo->id }}', '{{ $mesa->numero }}')">
-                                            <i class="bi bi-arrow-left-right text-primary me-1"></i> Cambiar Mesa
-                                        </button>
-                                    </div>
-
-                                    {{-- 2. Unir Mesas --}}
-                                    <div class="col-6">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalUnirMesas('{{ $pedidoActivo->id }}', '{{ $mesa->numero }}')">
-                                            <i class="bi bi-diagram-2 text-info me-1"></i> Unir Mesas
-                                        </button>
-                                    </div>
-
-                                    {{-- 3. Dividir Cuenta --}}
-                                    <div class="col-6">
-                                        <a href="{{ route('cajero.pedidos.dividir', $pedidoActivo->id) }}" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm">
-                                            <i class="bi bi-scissors text-purple me-1"></i> Dividir Cuenta
-                                        </a>
-                                    </div>
-
-                                    {{-- 4. Aplicar Descuento --}}
-                                    <div class="col-6">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 text-truncate bg-white shadow-sm" onclick="abrirModalDescuento('{{ $pedidoActivo->id }}', '{{ $pedidoActivo->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario) }}', '{{ $pedidoActivo->descuento ?? 0 }}')">
-                                            <i class="bi bi-percent text-success me-1"></i> Descuento
-                                        </button>
-                                    </div>
-
-                                    {{-- 5. Nota Especial --}}
-                                    <div class="col-12">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100 py-2 rounded-3 text-start px-2 bg-white shadow-sm" onclick="abrirModalNotaMesa('{{ $pedidoActivo->id }}', '{{ addslashes($pedidoActivo->notas ?? '') }}')">
-                                            <i class="bi bi-sticky text-warning me-1"></i> Nota: 
-                                            <span class="fw-semibold text-dark">{{ $pedidoActivo->notas ? Str::limit($pedidoActivo->notas, 22) : 'Agregar nota...' }}</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {{-- Botón de Cobro y Totales --}}
+                            {{-- TICKET DE TOTALES Y BOTONES DE COBRO DE ALTO IMPACTO --}}
                             <div class="mt-auto">
-                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                    <span class="text-muted small">Subtotal:</span>
-                                    <span class="fw-bold text-dark">Bs {{ number_format($pedidoActivo->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario), 2) }}</span>
-                                </div>
-                                @if(($pedidoActivo->descuento ?? 0) > 0)
-                                    <div class="d-flex justify-content-between align-items-center mb-1 text-danger small">
-                                        <span>Descuento aplicado:</span>
-                                        <span class="fw-bold">-Bs {{ number_format($pedidoActivo->descuento, 2) }}</span>
+                                <div class="card border-0 shadow-sm p-3 mb-3 rounded-4 border-dashed" style="border: 1.5px dashed #cbd5e1 !important;">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="text-muted small">Subtotal:</span>
+                                        <span class="fw-bold">Bs {{ number_format($pedidoActivo->detalles->sum(fn($d) => $d->cantidad * $d->precio_unitario), 2) }}</span>
                                     </div>
-                                @endif
-                                <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <span class="h5 mb-0 fw-bold">TOTAL:</span>
-                                    <span class="h4 mb-0 fw-bold text-success">Bs {{ number_format($pedidoActivo->total, 2) }}</span>
+                                    @if(($pedidoActivo->descuento ?? 0) > 0)
+                                        <div class="d-flex justify-content-between align-items-center mb-1 text-danger small">
+                                            <span>Descuento aplicado:</span>
+                                            <span class="fw-bold">-Bs {{ number_format($pedidoActivo->descuento, 2) }}</span>
+                                        </div>
+                                    @endif
+                                    <hr class="my-2 opacity-10">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <span class="text-uppercase fw-bold text-muted small d-block" style="font-size: 0.7rem; letter-spacing: 0.5px;">Total a Cobrar</span>
+                                            <span class="h3 mb-0 fw-black text-success">Bs {{ number_format($pedidoActivo->total, 2) }}</span>
+                                        </div>
+                                        <div class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill fw-bold">
+                                            <i class="bi bi-check-circle-fill me-1"></i> Listo para cobro
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="mb-2">
-                                    <a href="{{ route('cajero.mesa', $mesa->id) }}" class="btn btn-outline-success w-100 py-2 fw-bold rounded-4 shadow-sm border-2">
-                                        <i class="bi bi-pencil-square me-2"></i> ACTUALIZAR MESA
-                                    </a>
-                                </div>
-                                <a href="{{ route('cajero.cobrar', $pedidoActivo->id) }}" class="btn btn-warning w-100 py-3 fw-bold text-white fs-5 rounded-4 shadow-sm">
-                                    <i class="bi bi-credit-card me-2"></i> COBRAR
+
+                                {{-- Botón 1: COBRAR (VERDE DEGRADADO EJECUTIVO) --}}
+                                <a href="{{ route('cajero.cobrar', $pedidoActivo->id) }}" class="btn btn-success btn-lg w-100 py-3 fw-black text-white rounded-4 shadow d-flex align-items-center justify-content-center gap-2 mb-2" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-size: 1.15rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-cash-coin fs-4"></i>
+                                    <span>COBRAR MESA</span>
                                 </a>
-                                <form action="{{ route('cajero.pedido.anular', $pedidoActivo->id) }}" method="POST" class="mt-2 swal-confirm-form"
+
+                                {{-- Botón 2: AGREGAR PLATOS / MODIFICAR MESA --}}
+                                <a href="{{ route('cajero.mesa', $mesa->id) }}" class="btn btn-primary w-100 py-2.5 fw-bold rounded-4 shadow-sm d-flex align-items-center justify-content-center gap-2 mb-2" style="background: #4361ee; border: none;">
+                                    <i class="bi bi-plus-circle-fill"></i>
+                                    <span>Agregar Platos / Modificar</span>
+                                </a>
+
+                                {{-- Botón 3: ANULAR PEDIDO (Seguro y sutil) --}}
+                                <form action="{{ route('cajero.pedido.anular', $pedidoActivo->id) }}" method="POST" class="mt-1 swal-confirm-form"
                                       data-swal-title="¿Anular Pedido?"
                                       data-swal-message="¿Estás seguro de ANULAR y BORRAR este pedido por completo? Esta acción devolverá los productos al inventario y liberará la mesa."
                                       data-swal-icon="warning"
                                       data-swal-confirm-text="Sí, anular pedido">
                                     @csrf
                                     @method('DELETE')
-                                    <button type="submit" class="btn btn-danger w-100 py-2 fw-bold rounded-4 shadow-sm">
-                                        <i class="bi bi-trash3-fill me-2"></i> ANULAR PEDIDO
+                                    <button type="submit" class="btn btn-link text-danger w-100 text-decoration-none small py-1 fw-bold opacity-75 hover-opacity-100">
+                                        <i class="bi bi-trash3 me-1"></i> Anular pedido
                                     </button>
                                 </form>
                             </div>
@@ -399,7 +419,7 @@
                             <div class="text-center py-5">
                                 <i class="bi bi-check2-circle text-success display-1 opacity-25"></i>
                                 <p class="mt-3">Esta mesa está lista para nuevos clientes.</p>
-                                <a href="{{ route('cajero.mesa', $mesa->id) }}" class="btn btn-outline-success w-100 py-3 fw-bold rounded-4 mt-3">
+                                <a href="{{ route('cajero.mesa', $mesa->id) }}" class="btn btn-success w-100 py-3 fw-bold text-white rounded-4 mt-3 shadow-sm" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
                                     <i class="bi bi-plus-circle me-2"></i> ATENDER MESA
                                 </a>
                             </div>
@@ -1299,6 +1319,102 @@
 .btn-purple:hover { background-color: #59339d !important; border-color: #59339d !important; }
 .btn-outline-purple { color: #6f42c1 !important; border-color: #6f42c1 !important; }
 .btn-outline-purple:hover { background-color: #6f42c1 !important; color: #fff !important; }
+
+/* Estilos de Tarjetas de Mesas Libres y Ocupadas */
+.mesa-card {
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.status-libre {
+    width: 8px;
+    height: 8px;
+    background-color: #10b981;
+    border-radius: 50%;
+    display: inline-block;
+}
+.status-ocupada {
+    width: 8px;
+    height: 8px;
+    background-color: #ef4444;
+    border-radius: 50%;
+    display: inline-block;
+}
+.mesa-card-libre .mesa-status-text {
+    color: #059669;
+}
+.mesa-card-ocupada .mesa-status-text {
+    color: #dc2626;
+}
+.mesa-card-libre {
+    background-color: #ffffff;
+    border: 2px solid #e2e8f0 !important;
+}
+.mesa-card-libre .mesa-icon-circle {
+    background-color: #f1f5f9;
+    color: #64748b;
+}
+.mesa-card-ocupada {
+    background-color: #fff5f5 !important;
+    border: 2px solid #ef4444 !important;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.15) !important;
+}
+.mesa-card-ocupada .mesa-icon-circle {
+    background-color: #fee2e2;
+    color: #dc2626;
+}
+.mesa-card-ocupada .mesa-title {
+    color: #b91c1c !important;
+}
+.mesa-card-ocupada .mesa-price {
+    color: #dc2626 !important;
+}
+
+[data-bs-theme="dark"] .mesa-card-libre {
+    background-color: #1e293b !important;
+    border: 2px solid #334155 !important;
+}
+[data-bs-theme="dark"] .mesa-card-libre .mesa-status-text {
+    color: #34d399 !important;
+}
+[data-bs-theme="dark"] .mesa-card-libre .mesa-icon-circle {
+    background-color: #334155 !important;
+    color: #94a3b8 !important;
+}
+[data-bs-theme="dark"] .mesa-card-libre .mesa-title {
+    color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .mesa-card-ocupada {
+    background-color: #1a0808 !important;
+    border: 2px solid #ef4444 !important;
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.25) !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .mesa-status-text {
+    color: #f87171 !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .mesa-icon-circle {
+    background-color: #3b0909 !important;
+    color: #f87171 !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .mesa-title {
+    color: #ffffff !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .bg-danger-subtle {
+    background-color: #371212 !important;
+    color: #fca5a5 !important;
+    border-color: #7f1d1d !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .bg-info-subtle {
+    background-color: #0c2a4a !important;
+    color: #38bdf8 !important;
+    border-color: #0369a1 !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .small {
+    color: #f87171 !important;
+}
+[data-bs-theme="dark"] .mesa-card-ocupada .text-success {
+    color: #34d399 !important;
+}
+
 .mesa-card:hover {
     transform: translateY(-5px);
     box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;

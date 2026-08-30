@@ -313,3 +313,132 @@ body {
 .text-dark { color: #1a1d23 !important; }
 .bg-light { background-color: #f8f9fc !important; }
 .border { border-color: #e8eaf0 !important; }
+
+// ─── MODO OSCURO GLOBAL (DARK MODE) ─────────────────────────────────────────
+[data-bs-theme="dark"] {
+    background-color: #0f172a !important;
+    color: #f8fafc !important;
+
+    body {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+    }
+
+    .navbar {
+        background-color: #1e293b !important;
+        border-bottom: 1px solid #334155 !important;
+        .navbar-brand, .nav-link {
+            color: #f8fafc !important;
+        }
+        .nav-link.active {
+            color: #38bdf8 !important;
+        }
+    }
+
+    .card {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        color: #f8fafc !important;
+        .card-header, .card-footer {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+    }
+
+    .offcanvas {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        .offcanvas-header, .offcanvas-footer {
+            background-color: #1e293b !important;
+            border-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+    }
+
+    .modal-content {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+        .modal-header, .modal-footer {
+            border-color: #334155 !important;
+        }
+    }
+
+    .list-group-item {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+        .text-dark {
+            color: #f8fafc !important;
+        }
+    }
+
+    .bg-white, .bg-light, .bg-body {
+        background-color: #1e293b !important;
+        color: #f8fafc !important;
+    }
+
+    .text-dark {
+        color: #f1f5f9 !important;
+    }
+
+    .text-muted {
+        color: #94a3b8 !important;
+    }
+
+    .border, .border-bottom, .border-top, .border-start, .border-end {
+        border-color: #334155 !important;
+    }
+
+    .form-control, .form-select {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+        &:focus {
+            background-color: #0f172a !important;
+            color: #f8fafc !important;
+            border-color: #38bdf8 !important;
+        }
+    }
+
+    .dropdown-menu {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+        .dropdown-item {
+            color: #f8fafc !important;
+            &:hover, &:focus {
+                background-color: #334155 !important;
+                color: #ffffff !important;
+            }
+        }
+        .dropdown-divider {
+            border-color: #334155 !important;
+        }
+    }
+
+    .btn-light {
+        background-color: #334155 !important;
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+    }
+
+    .btn-outline-dark {
+        color: #f8fafc !important;
+        border-color: #475569 !important;
+        &:hover {
+            background-color: #334155 !important;
+            color: #ffffff !important;
+        }
+    }
+
+    .btn-outline-secondary {
+        color: #cbd5e1 !important;
+        border-color: #475569 !important;
+    }
+
+    .toast {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+    }
+}

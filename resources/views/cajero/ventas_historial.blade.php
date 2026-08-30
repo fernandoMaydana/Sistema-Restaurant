@@ -168,8 +168,12 @@
                                     </button>
 
                                     @if($factura->estado === 'activa')
+                                        <a href="{{ route('cajero.factura.pdf', $factura->id) }}" target="_blank" 
+                                           class="btn btn-sm btn-outline-danger rounded-pill px-3 me-1" title="Descargar PDF">
+                                            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+                                        </a>
                                         <button type="button" onclick="imprimirFacturaDirecta(event, '{{ route('cajero.api.imprimir.factura', $factura->id, false) }}')" 
-                                                class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btn-imprimir-hist-{{ $factura->id }}" title="Imprimir Comprobante">
+                                                class="btn btn-sm btn-outline-dark rounded-pill px-3" id="btn-imprimir-hist-{{ $factura->id }}" title="Imprimir Comprobante Ticket">
                                             <i class="bi bi-printer me-1"></i>Ticket
                                         </button>
                                     @else

@@ -66,6 +66,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     // Historial de Ventas
     Route::get('/ventas', [App\Http\Controllers\Admin\HistorialVentaController::class, 'index'])->name('ventas.index');
     Route::get('/ventas/{id}/detalle', [App\Http\Controllers\Admin\HistorialVentaController::class, 'getDetalle'])->name('ventas.detalle');
+    Route::get('/ventas/{id}/pdf', [App\Http\Controllers\Cajero\CajeraController::class, 'descargarPdfFactura'])->name('ventas.pdf');
 
     // Reportes Financieros
     Route::get('/reportes/productos-vendidos', [App\Http\Controllers\Admin\ReporteController::class, 'productosVendidos'])->name('reportes.productos_vendidos');
@@ -140,6 +141,7 @@ Route::middleware(['auth', 'role:cajero'])->prefix('cajero')->name('cajero.')->g
     Route::get('/cobrar/{pedido_id}', [CajeraController::class, 'formCobrar'])->name('cobrar');
     Route::post('/cobrar/{pedido_id}', [CajeraController::class, 'procesarPago'])->name('cobrar.pagar');
     Route::get('/factura/{factura_id}', [CajeraController::class, 'verFactura'])->name('factura');
+    Route::get('/factura/{factura_id}/pdf', [CajeraController::class, 'descargarPdfFactura'])->name('factura.pdf');
     Route::post('/factura/{factura_id}/anular', [CajeraController::class, 'anularFactura'])->name('factura.anular');
 
     // Dividir cuenta

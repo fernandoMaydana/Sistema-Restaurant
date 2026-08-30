@@ -1382,6 +1382,97 @@ class CajeraController extends Controller
     }
 
     /**
+     * Genera y descarga / visualiza la factura en formato PDF.
+     */
+    public function descargarPdfFactura($factura_id)
+    {
+        $factura = Factura::with(['pedido.detalles.producto', 'pedido.mesa', 'cajero'])
+            ->findOrFail($factura_id);
+
+        $siatConfig = DB::table('siat_configs')->first();
+        $montoLiteral = $this->numeroALetras($factura->monto_pagado);
+
+        $nit = $siatConfig->nit ?? '4947627011';
+        $cuf = $factura->cuf ?? '15287C6D33B13DFC1A378CD78CED61D7745EB3A1462121D97EBC942F74';
+        $numFactura = $factura->numero_factura_siat ?? str_pad($factura->id, 5, '0', STR_PAD_LEFT);
+        $qrUrlContent = "https://siat.impuestos.gob.bo/consulta/QR?nit={$nit}&cuf={$cuf}&numero={$numFactura}&t=1";
+
+        $qrBase64 = null;
+        try {
+            $qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=" . urlencode($qrUrlContent);
+            $qrImage = @file_get_contents($qrApiUrl);
+            if ($qrImage) {
+                $qrBase64 = 'data:image/png;base64,' . base64_encode($qrImage);
+            }
+        } catch (\Exception $e) {
+            $qrBase64 = null;
+        }
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('cajero.factura_pdf', compact('factura', 'siatConfig', 'montoLiteral', 'qrUrlContent', 'qrBase64'));
+        $pdf->setOptions(['isRemoteEnabled' => true, 'isHtml5ParserEnabled' => true]);
+        // Ancho 80mm (226.77pt), largo adaptable ~720pt
+        $pdf->setPaper([0, 0, 226.77, 720], 'portrait');
+
+        return $pdf->stream("Factura_{$factura->id}.pdf");
+    }
+
+    /**
+     * Convierte un número a letras en formato de bolivianos.
+     */
+    private function numeroALetras($numero)
+    {
+        $unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE', 'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE', 'VEINTE'];
+        $decenas = ['', '', 'VEINTI', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+        $centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
+
+        $entero = floor($numero);
+        $decimales = str_pad(round(($numero - $entero) * 100), 2, '0', STR_PAD_LEFT);
+
+        if ($entero == 0) return "CERO " . $decimales . "/100 BOLIVIANOS";
+        if ($entero == 100) return "CIEN " . $decimales . "/100 BOLIVIANOS";
+
+        $convertirTresCifras = function($n) use ($unidades, $decenas, $centenas) {
+            $output = '';
+            if ($n >= 100) {
+                $c = floor($n / 100);
+                if ($n == 100) return 'CIEN';
+                $output .= $centenas[$c] . ' ';
+                $n %= 100;
+            }
+            if ($n <= 20) {
+                $output .= $unidades[$n];
+            } else {
+                $d = floor($n / 10);
+                $u = $n % 10;
+                if ($d == 2) {
+                    $output .= 'VEINTI' . ($u > 0 ? $unidades[$u] : '');
+                } else {
+                    $output .= $decenas[$d];
+                    if ($u > 0) $output .= ' Y ' . $unidades[$u];
+                }
+            }
+            return trim($output);
+        };
+
+        $texto = '';
+        if ($entero >= 1000000) {
+            $millones = floor($entero / 1000000);
+            $texto .= ($millones == 1 ? 'UN MILLON ' : $convertirTresCifras($millones) . ' MILLONES ');
+            $entero %= 1000000;
+        }
+        if ($entero >= 1000) {
+            $miles = floor($entero / 1000);
+            $texto .= ($miles == 1 ? 'UN MIL ' : $convertirTresCifras($miles) . ' MIL ');
+            $entero %= 1000;
+        }
+        if ($entero > 0) {
+            $texto .= $convertirTresCifras($entero) . ' ';
+        }
+
+        return trim($texto) . " " . $decimales . "/100 BOLIVIANOS";
+    }
+
+    /**
      * Anula una factura ya cobrada.
      */
     public function anularFactura($factura_id)

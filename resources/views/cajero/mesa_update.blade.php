@@ -5,18 +5,18 @@
     
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-3">
-            <a href="{{ route('cajero.salon') }}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left"></i> Volver al Salón
+            <a href="{{ route('cajero.salon') }}" class="btn btn-sm btn-outline-secondary rounded-pill px-3 py-2 fw-semibold shadow-sm">
+                <i class="bi bi-arrow-left me-1"></i> Volver al Salón
             </a>
             <h2 class="mb-0 fw-bold">
                 Actualizar 
                 @if($mesa->es_para_llevar)
-                    🛍️ Llevar {{ $mesa->numero }}
+                    <i class="bi bi-bag-fill text-primary me-1"></i> Llevar {{ $mesa->numero }}
                 @else
                     Mesa {{ $mesa->numero }}
                 @endif
             </h2>
-            <span class="badge {{ $mesa->estado == 'libre' ? 'bg-success' : 'bg-danger' }} fs-6">
+            <span class="badge {{ $mesa->estado == 'libre' ? 'bg-success' : 'bg-danger' }} fs-6 rounded-pill px-3">
                 {{ ucfirst($mesa->estado) }}
             </span>
         </div>
@@ -28,22 +28,26 @@
             
             {{-- PANEL IZQUIERDO: SELECCIÓN DE PRODUCTOS NUEVOS --}}
             <div class="col-md-8">
-                <div class="card shadow-sm border-0 mb-4">
-                    <div class="card-header bg-white py-3">
-                        <ul class="nav nav-pills card-header-pills overflow-auto flex-nowrap pb-2" id="catTabs" style="gap: 8px;">
-                            <li class="nav-item">
-                                <button type="button" class="nav-link active fw-bold btn-outline-danger" data-bs-toggle="pill" data-bs-target="#cat-combos">
-                                    🎁 Combos
+                <div class="card shadow-sm border-0 mb-4 rounded-4">
+                    <div class="card-header bg-white py-3 border-0 d-flex flex-wrap align-items-center justify-content-between gap-2 rounded-top-4">
+                        <ul class="nav nav-pills category-chips-wrapper flex-grow-1 border-0 mb-0" id="catTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button type="button" class="nav-link category-chip active rounded-pill px-3 py-2 fw-bold" id="tab-combos" data-bs-toggle="pill" data-bs-target="#cat-combos" role="tab" aria-controls="cat-combos" aria-selected="true">
+                                    <i class="bi bi-gift me-1"></i> Combos y Promos
                                 </button>
                             </li>
                             @foreach($categorias as $i => $cat)
-                                <li class="nav-item">
-                                    <button type="button" class="nav-link fw-bold" data-bs-toggle="pill" data-bs-target="#cat-{{ $cat->id }}">
+                                <li class="nav-item" role="presentation">
+                                    <button type="button" class="nav-link category-chip rounded-pill px-3 py-2 fw-bold" id="tab-cat-{{ $cat->id }}" data-bs-toggle="pill" data-bs-target="#cat-{{ $cat->id }}" role="tab" aria-controls="cat-{{ $cat->id }}" aria-selected="false">
                                         {{ $cat->nombre }}
                                     </button>
                                 </li>
                             @endforeach
                         </ul>
+                        <div class="input-group input-group-sm ms-auto" style="width: 220px;">
+                            <span class="input-group-text bg-light border-end-0 rounded-start-pill ps-3"><i class="bi bi-search text-muted"></i></span>
+                            <input type="text" id="input-buscar-menu" class="form-control border-start-0 rounded-end-pill py-2" placeholder="Buscar producto..." onkeyup="filtrarProductosMenu()">
+                        </div>
                     </div>
                     <div class="card-body bg-light">
                         <div class="tab-content">
@@ -157,28 +161,56 @@
 
             {{-- PANEL DERECHO: TICKET DE LA MESA --}}
             <div class="col-md-4">
-                <div class="card shadow border-0 position-sticky" style="top: 20px;">
-                    <div class="card-header bg-dark text-white py-3">
-                        <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Detalle de la Cuenta</h5>
+                <div class="card shadow border-0 position-sticky rounded-4 overflow-hidden" style="top: 20px;">
+                    <div class="card-header bg-white border-bottom py-3 px-3.5 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-receipt-cutoff fs-4 text-primary"></i>
+                            <h5 class="mb-0 fw-bold fs-5 text-dark">Comanda Mesa {{ $mesa->numero }}</h5>
+                        </div>
+                        {{-- Acciones Rápidas del Ticket --}}
+                        <div class="d-flex align-items-center gap-1">
+                            @if($pedido && $pedido->detalles->count() > 0)
+                                <button type="button" onclick="imprimirDirecto(event, '{{ route('cajero.api.imprimir.cuenta', $pedido->id) }}')" class="btn btn-sm btn-light border py-1.5 px-2.5 rounded-3 text-secondary" title="Imprimir Pre-cuenta Rápida">
+                                    <i class="bi bi-printer fs-6"></i>
+                                </button>
+                            @endif
+                            <button type="button" onclick="vaciarSeleccionNueva()" class="btn btn-sm btn-light border py-1.5 px-2.5 rounded-3 text-danger" title="Vaciar selección nueva">
+                                <i class="bi bi-trash3 fs-6"></i>
+                            </button>
+                        </div>
                     </div>
-                    <div class="card-body p-0 overflow-auto" style="max-height: 60vh;">
+                    <div class="card-body p-0 overflow-auto" style="max-height: 58vh;">
                         
                         @if($pedido && $pedido->detalles->count() > 0)
-                            <div class="p-3 border-bottom bg-light">
-                                <small class="text-muted d-block mb-2">PRODUCTOS REGISTRADOS</small>
+                            <div class="p-3 border-bottom">
+                                <small class="text-uppercase fw-bold text-muted d-block mb-2.5" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-clock-history me-1 text-secondary"></i> Registrados Anteriormente en Cocina
+                                </small>
                                 @foreach($pedido->detalles as $det)
-                                    <div class="d-flex justify-content-between align-items-center mb-3 existing-item-row" id="row-det-{{ $det->id }}">
+                                    <div class="d-flex justify-content-between align-items-center mb-2.5 p-2.5 rounded-3 bg-light existing-item-row" id="row-det-{{ $det->id }}">
                                         <div style="flex: 1;">
-                                            <div class="fw-bold" style="font-size: 0.9rem;">{{ $det->nombre_mostrar }}</div>
-                                            <small class="text-muted">Bs {{ number_format($det->precio_unitario, 2) }}</small>
+                                            {{-- Nombre del Producto Grande --}}
+                                            <div class="fw-bold text-dark fs-5 mb-1" style="line-height: 1.2;">{{ $det->nombre_mostrar }}</div>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <small class="text-muted" style="font-size: 0.8rem;">Bs {{ number_format($det->precio_unitario, 2) }} c/u</small>
+                                                @if($det->estado_comanda === 'pendiente')
+                                                    <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
+                                                        <i class="bi bi-clock me-1"></i>Pendiente
+                                                    </span>
+                                                @else
+                                                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-0.5 rounded-pill" style="font-size: 0.65rem;">
+                                                        <i class="bi bi-check-circle me-1"></i>En Cocina
+                                                    </span>
+                                                @endif
+                                            </div>
                                         </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <button type="button" class="btn btn-sm btn-outline-danger p-0 rounded-circle" style="width: 24px; height: 24px;" onclick="modificarExistente('{{ $det->id }}', -1)">−</button>
+                                        <div class="d-flex align-items-center gap-1.5 bg-white border rounded-pill px-2.5 py-1 shadow-2xs ms-2">
+                                            <button type="button" class="btn btn-sm btn-link text-danger p-0 fw-black text-decoration-none" style="width: 22px; height: 22px; font-size: 1.2rem; line-height: 1;" onclick="modificarExistente('{{ $det->id }}', -1)">−</button>
                                             <input type="number" name="detalles[{{ $det->id }}][cantidad]" id="det-qty-{{ $det->id }}" value="{{ $det->cantidad }}" 
-                                                   class="form-control form-control-sm text-center fw-bold px-0 border-0 bg-transparent" style="width: 30px;" readonly>
-                                            <button type="button" class="btn btn-sm btn-outline-success p-0 rounded-circle" style="width: 24px; height: 24px;" onclick="modificarExistente('{{ $det->id }}', 1)">+</button>
+                                                   class="form-control form-control-sm text-center fw-black px-0 border-0 bg-transparent" style="width: 32px; font-size: 1rem;" readonly>
+                                            <button type="button" class="btn btn-sm btn-link text-success p-0 fw-black text-decoration-none" style="width: 22px; height: 22px; font-size: 1.2rem; line-height: 1;" onclick="modificarExistente('{{ $det->id }}', 1)">+</button>
                                         </div>
-                                        <div class="text-end fw-bold ms-3" style="min-width: 70px;">
+                                        <div class="text-end fw-bold ms-3" style="min-width: 75px; font-size: 1rem;">
                                             Bs <span id="det-subtotal-{{ $det->id }}">{{ number_format($det->cantidad * $det->precio_unitario, 2) }}</span>
                                         </div>
                                     </div>
@@ -188,34 +220,44 @@
 
                         {{-- SECCIÓN DE ITEMS QUE SE ESTÁN AGREGANDO --}}
                         <div id="new-items-container" class="p-3">
-                            <small class="text-muted d-block mb-2">POR AGREGAR</small>
+                            <small class="text-uppercase fw-bold text-primary d-block mb-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                <i class="bi bi-plus-circle-dotted me-1"></i> Nuevos Ítems por Agregar
+                            </small>
                             <div id="new-items-list">
                                 {{-- Se llena vía JS --}}
-                                <div class="text-center text-muted py-3 small" id="no-new-items">No has seleccionado nada nuevo.</div>
+                                <div class="text-center text-muted py-4 small opacity-75" id="no-new-items">
+                                    <i class="bi bi-plus-circle display-6 d-block mb-2 opacity-50"></i>
+                                    Haz clic en los platos para añadirlos al pedido.
+                                </div>
                             </div>
                         </div>
 
                     </div>
-                    <div class="card-footer bg-white p-4">
-                        <div class="d-flex justify-content-between align-items-center mb-4">
-                            <h4 class="mb-0 fw-bold text-dark">Total estimado:</h4>
-                            <h2 class="mb-0 fw-bold text-success" id="total-general">Bs 0.00</h2>
+                    <div class="card-footer p-4 border-top bg-white">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-muted fw-bold text-uppercase small" style="font-size: 0.8rem; letter-spacing: 0.5px;">TOTAL ESTIMADO:</span>
+                            <span class="h2 mb-0 fw-black text-success" id="total-general">Bs 0.00</span>
                         </div>
+                        {{-- Desglose del conteo cuantitativo sin emojis --}}
+                        <small id="resumen-items-conteo" class="text-muted d-block small mb-3 text-end" style="font-size: 0.78rem;">
+                            0 productos en pedido
+                        </small>
 
                         @if($mesa->es_para_llevar)
                             <div class="d-flex flex-column gap-2">
-                                <button type="submit" name="opcion_pago" value="cobrar_ahora" class="btn btn-warning btn-lg fw-bold text-white shadow-sm py-3 rounded-4 d-flex align-items-center justify-content-center gap-2">
+                                <button type="submit" name="opcion_pago" value="cobrar_ahora" class="btn btn-warning btn-lg fw-black text-white shadow-sm py-3 rounded-4 d-flex align-items-center justify-content-center gap-2" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none;">
                                     <i class="bi bi-credit-card-2-front-fill fs-5"></i>
                                     <span>PAGAR EN ESTE MOMENTO (COBRAR AHORA)</span>
                                 </button>
-                                <button type="submit" name="opcion_pago" value="recoger_despues" class="btn btn-outline-primary btn-lg fw-bold shadow-sm py-3 rounded-4 d-flex align-items-center justify-content-center gap-2">
+                                <button type="submit" name="opcion_pago" value="recoger_despues" class="btn btn-outline-primary btn-lg fw-bold shadow-sm py-2.5 rounded-4 d-flex align-items-center justify-content-center gap-2">
                                     <i class="bi bi-clock-history fs-5"></i>
                                     <span>PAGAR AL RECOGER DESPUÉS</span>
                                 </button>
                             </div>
                         @else
-                            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm py-3 rounded-4" id="btn-submit">
-                                <i class="bi bi-check-circle-fill me-2"></i> ACTUALIZAR MESA
+                            <button type="submit" class="btn btn-success btn-lg w-100 fw-black shadow py-3 rounded-4 d-flex align-items-center justify-content-center gap-2" id="btn-submit" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-size: 1.15rem; letter-spacing: 0.5px;">
+                                <i class="bi bi-send-check-fill fs-5"></i>
+                                <span>ENVIAR A COCINA Y GUARDAR</span>
                             </button>
                         @endif
                     </div>
@@ -321,7 +363,7 @@
             hidPid.disabled = false;
             hidPrc.disabled = false;
             hidNota.disabled = false;
-            if(card) card.classList.add('border-primary', 'bg-primary-subtle');
+            if(card) card.classList.add('product-card-active', 'border-primary');
         } else {
             delete seleccion[key];
             hidQty.disabled = true;
@@ -332,7 +374,7 @@
             
             // Si no hay otras variantes de este mismo producto
             const otras = Object.keys(seleccion).filter(k => k.startsWith('p_' + prodId + '_'));
-            if (otras.length === 0 && card) card.classList.remove('border-primary', 'bg-primary-subtle');
+            if (otras.length === 0 && card) card.classList.remove('product-card-active', 'border-primary', 'bg-primary-subtle');
         }
 
         renderNewItems();
@@ -348,7 +390,18 @@
             }
         }
     }
-    
+
+    function toggleInputNota(key) {
+        const container = document.getElementById('container-nota-' + key);
+        if (container) {
+            container.classList.toggle('d-none');
+            if (!container.classList.contains('d-none')) {
+                const input = document.getElementById('input-nota-' + key);
+                if (input) input.focus();
+            }
+        }
+    }
+
     let comboInstanceCounter = 0;
 
     function agregarComboAlPedido(combo) {
@@ -519,42 +572,176 @@
                 ${deleteBtnHtml}
                 <div class="d-flex justify-content-between align-items-center">
                     <div style="flex: 1;">
-                        <div class="fw-bold" style="font-size: 0.85rem;">${item.nombre}</div>
-                        <small class="text-primary">${item.isCombo ? '+ Combo' : '+ Nuevo'}</small>
+                        {{-- Nombre del Producto Grande --}}
+                        <div class="fw-bold text-dark fs-5" style="line-height: 1.2;">${item.nombre}</div>
+                        <div class="d-flex align-items-center gap-2 mt-1">
+                            <span class="text-muted small" style="font-size: 0.8rem;">Bs ${item.precio.toFixed(2)} c/u</span>
+                            ${!item.isCombo ? `
+                                <button type="button" class="btn btn-sm btn-link p-0 text-primary text-decoration-none border-0" style="font-size: 0.76rem;" onclick="editarPrecioNuevo('${item.key}')" title="Editar precio unitario">
+                                    <i class="bi bi-pencil-fill me-0.5" style="font-size: 0.7rem;"></i> Editar precio
+                                </button>
+                            ` : ''}
+                        </div>
                     </div>
                     <div class="fw-bold text-end ms-3">
-                        <span class="badge ${item.isCombo ? 'bg-danger' : 'bg-primary'}">x${item.val}</span>
-                        <div class="small">Bs ${(item.val * item.precio).toFixed(2)}</div>
+                        <span class="badge ${item.isCombo ? 'bg-danger' : 'bg-primary'} rounded-pill px-3 py-1 fs-6">x${item.val}</span>
+                        <div class="fs-6 fw-black text-dark mt-1">Bs ${(item.val * item.precio).toFixed(2)}</div>
                     </div>
                 </div>
                 ${!item.isCombo ? `
                 <div class="w-100 mt-1">
-                    <input type="text" placeholder="Especificaciones (ej. Sin cebolla)..." 
-                           class="form-control form-control-sm border-1 mt-1" 
-                           style="font-size: 0.75rem;" 
-                           value="${item.notas || ''}" 
-                           oninput="actualizarNotaNuevo('${item.key}', this.value)">
+                    <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none text-muted small d-inline-flex align-items-center gap-1" style="font-size: 0.74rem;" onclick="toggleInputNota('${item.key}')">
+                        <i class="bi bi-plus-circle text-primary"></i> ${item.notas ? '<span class="text-primary fw-semibold">Especificación: ' + item.notas + '</span>' : '+ Poner especificación'}
+                    </button>
+                    <div id="container-nota-${item.key}" class="${item.notas ? '' : 'd-none'} mt-1">
+                        <input type="text" id="input-nota-${item.key}" placeholder="Escribe especificación (ej. Sin cebolla, extra salsa)..." 
+                               class="form-control form-control-sm border mt-1 rounded-3" 
+                               style="font-size: 0.78rem;" 
+                               value="${item.notas || ''}" 
+                               oninput="actualizarNotaNuevo('${item.key}', this.value)">
+                    </div>
                 </div>` : ''}
             `;
             container.appendChild(div);
         });
     }
 
+    function editarPrecioNuevo(key) {
+        if (!seleccion[key]) return;
+        const item = seleccion[key];
+        
+        Swal.fire({
+            title: 'Editar Precio Unitario',
+            html: `<p class="text-muted small mb-2">Modificar precio unitario para <strong>${item.nombre}</strong></p>`,
+            input: 'number',
+            inputValue: item.precio,
+            inputAttributes: {
+                step: '0.50',
+                min: '0'
+            },
+            showCancelButton: true,
+            confirmButtonText: 'Guardar Precio',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#10b981',
+            cancelButtonColor: '#64748b'
+        }).then((result) => {
+            if (result.isConfirmed && result.value !== null) {
+                const nuevoPrecio = parseFloat(result.value);
+                if (!isNaN(nuevoPrecio) && nuevoPrecio >= 0) {
+                    seleccion[key].precio = nuevoPrecio;
+                    const hidPrc = document.getElementById('hid-prc-' + key);
+                    if (hidPrc) hidPrc.value = nuevoPrecio;
+                    renderNewItems();
+                    calcularTotalGeneral();
+                }
+            }
+        });
+    }
+
     function calcularTotalGeneral() {
         let total = 0;
+        let cantExistentes = 0;
+        let cantNuevos = 0;
         
         // Sumar existentes
         Object.values(existentes).forEach(item => {
             total += item.cant * item.precio;
+            cantExistentes += item.cant;
         });
 
         // Sumar nuevos
         Object.values(seleccion).forEach(item => {
             total += item.val * item.precio;
+            cantNuevos += item.val;
         });
 
         document.getElementById('total-general').innerText = 'Bs ' + total.toLocaleString('en-US', { minimumFractionDigits: 2 });
+        
+        const resumenEl = document.getElementById('resumen-items-conteo');
+        if (resumenEl) {
+            let msg = '';
+            if (cantExistentes > 0 && cantNuevos > 0) {
+                msg = `${cantExistentes} registrados + ${cantNuevos} nuevos por enviar`;
+            } else if (cantExistentes > 0) {
+                msg = `${cantExistentes} registrados previamente`;
+            } else if (cantNuevos > 0) {
+                msg = `${cantNuevos} nuevos por enviar a cocina`;
+            } else {
+                msg = `0 productos en pedido`;
+            }
+            resumenEl.innerText = msg;
+        }
     }
+
+    function vaciarSeleccionNueva() {
+        if (Object.keys(seleccion).length === 0) return;
+        
+        Swal.fire({
+            title: '¿Vaciar selección nueva?',
+            text: 'Se desmarcarán todos los productos nuevos agregados en esta sesión.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Sí, vaciar',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Object.keys(seleccion).forEach(key => {
+                    const prodId = seleccion[key].prodId;
+                    const input = document.getElementById('qty-' + key);
+                    if (input) input.value = 0;
+                    sincronizarNuevo(key, prodId, 0, '', 0);
+                });
+            }
+        });
+    }
+
+    function filtrarProductosMenu() {
+        const query = (document.getElementById('input-buscar-menu').value || '').toLowerCase().trim();
+        const activeTab = document.querySelector('.tab-pane.active');
+        if (!activeTab) return;
+
+        const productCards = activeTab.querySelectorAll('.col');
+        productCards.forEach(col => {
+            const text = col.textContent.toLowerCase();
+            if (text.includes(query)) {
+                col.style.display = '';
+            } else {
+                col.style.display = 'none';
+            }
+        });
+    }
+
+    // Atajos de Teclado (F2, Ctrl+Enter, Esc)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'F2') {
+            e.preventDefault();
+            const search = document.getElementById('input-buscar-menu');
+            if (search) {
+                search.focus();
+                search.select();
+            }
+        }
+        if (e.ctrlKey && e.key === 'Enter') {
+            e.preventDefault();
+            const form = document.getElementById('form-actualizar');
+            if (form) form.submit();
+        }
+        if (e.key === 'Escape' && !document.querySelector('.swal2-container')) {
+            window.location.href = "{{ route('cajero.salon') }}";
+        }
+    });
+
+    // Listener para eventos nativos de Bootstrap 5 en pestañas
+    document.addEventListener('DOMContentLoaded', function() {
+        const tabTriggerList = document.querySelectorAll('#catTabs button[data-bs-toggle="pill"]');
+        tabTriggerList.forEach(tabTriggerEl => {
+            tabTriggerEl.addEventListener('shown.bs.tab', function () {
+                filtrarProductosMenu();
+            });
+        });
+    });
 </script>
 
 <style>

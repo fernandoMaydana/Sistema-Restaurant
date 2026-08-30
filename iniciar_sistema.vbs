@@ -12,4 +12,4 @@ WshShell.Run "php artisan serve --host 0.0.0.0", 0, false
 WScript.Sleep 3000
 
 ' 2. Abrir el navegador en la IP indicada
-WshShell.Run "cmd /c start http://192.168.0.7:8000", 0, false
+WshShell.Run "cmd /c start http://[IP_ADDRESS]", 0, false

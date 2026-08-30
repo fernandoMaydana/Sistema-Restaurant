@@ -4,38 +4,40 @@
 <div class="container-fluid px-2 px-md-3 pb-5" style="max-width: 800px; margin: auto;">
 
     {{-- Header Fijo --}}
-    <div class="d-flex justify-content-between align-items-center py-2 px-2 border-bottom mb-3 sticky-top bg-white" style="z-index:100; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+    <div class="d-flex justify-content-between align-items-center py-2 px-2 border-bottom mb-3 sticky-top bg-body shadow-2xs" style="z-index:100;">
         <div class="d-flex align-items-center gap-2">
-            <a href="{{ route(Auth::user()->role . '.salon') }}" class="btn btn-sm btn-outline-secondary" style="border: none; font-size: 1.2rem;">
+            <a href="{{ route(Auth::user()->role . '.salon') }}" class="btn btn-sm btn-outline-secondary border-0 fs-5 px-2">
                 <i class="bi bi-arrow-left"></i>
             </a>
             <div>
                 <div class="fw-bold fs-5 lh-1">
                     @if($mesa->es_para_llevar)
-                        🛍️ Llevar {{ $mesa->numero }}
+                        <i class="bi bi-bag-fill text-primary me-1"></i> Llevar {{ $mesa->numero }}
                     @else
                         Mesa {{ $mesa->numero }}
                     @endif
                 </div>
-                <span class="badge {{ $mesa->estado == 'libre' ? 'bg-success' : 'bg-danger' }} fw-normal" style="font-size: 0.7rem;">
-                    {{ ucfirst($mesa->estado) }}
-                </span>
             </div>
         </div>
 
-        {{-- Botón Ver Mesa SIEMPRE VISIBLE --}}
+        {{-- Botones de Acción y Modo Oscuro --}}
         @php
             $cantidadItems = $pedido ? $pedido->detalles->count() : 0;
         @endphp
-        <button class="btn btn-outline-dark btn-sm fw-bold position-relative" type="button"
-                data-bs-toggle="offcanvas" data-bs-target="#detallePedido" style="border-radius: 8px;">
-            <i class="bi bi-receipt me-1"></i>Ver Mesa
-            @if($cantidadItems > 0)
-                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
-                    {{ $cantidadItems }}
-                </span>
-            @endif
-        </button>
+        <div class="d-flex align-items-center gap-2">
+            <button type="button" class="btn btn-light border btn-sm rounded-circle p-2 d-flex align-items-center justify-content-center shadow-2xs" onclick="toggleTheme()" title="Modo Oscuro / Claro" style="width: 36px; height: 36px;">
+                <i class="bi bi-moon-stars-fill theme-toggle-icon text-warning fs-6"></i>
+            </button>
+            <button class="btn btn-outline-dark btn-sm fw-bold position-relative rounded-3 px-3 py-1.5" type="button"
+                    data-bs-toggle="offcanvas" data-bs-target="#detallePedido">
+                <i class="bi bi-receipt me-1"></i>Ver Mesa
+                @if($cantidadItems > 0)
+                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                        {{ $cantidadItems }}
+                    </span>
+                @endif
+            </button>
+        </div>
     </div>
 
     @if(session('error'))

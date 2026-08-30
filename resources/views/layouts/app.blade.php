@@ -2,9 +2,50 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Sistema Restaurante') }}</title>
+
+    <!-- Aplicación Web Progresiva (PWA Standalone Mode) -->
+    <meta name="theme-color" content="#10b981">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Restaurante">
+    <link rel="manifest" href="{{ asset('manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ asset('icon-192.png') }}">
+
+    <!-- Script de Inicialización de Modo Oscuro Sin Parpadeo -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('app-theme') || 'light';
+            document.documentElement.setAttribute('data-bs-theme', savedTheme);
+        })();
+
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('app-theme', theme);
+            const icons = document.querySelectorAll('.theme-toggle-icon');
+            icons.forEach(icon => {
+                if (theme === 'dark') {
+                    icon.className = 'bi bi-sun-fill theme-toggle-icon text-warning';
+                } else {
+                    icon.className = 'bi bi-moon-stars-fill theme-toggle-icon text-dark';
+                }
+            });
+        }
+
+        function toggleTheme() {
+            const currentTheme = localStorage.getItem('app-theme') || 'light';
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            applyTheme(newTheme);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedTheme = localStorage.getItem('app-theme') || 'light';
+            applyTheme(savedTheme);
+        });
+    </script>
 
     <!-- Inter Font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -197,6 +238,12 @@
                                 </li>
                             @endif
                         @else
+                            <li class="nav-item me-1">
+                                <button type="button" class="btn btn-light border btn-sm rounded-circle p-2 d-flex align-items-center justify-content-center shadow-2xs" onclick="toggleTheme()" title="Cambiar Modo Oscuro / Claro" style="width: 34px; height: 34px;">
+                                    <i class="bi bi-moon-stars-fill theme-toggle-icon text-warning"></i>
+                                </button>
+                            </li>
+
                             <li class="nav-item me-2">
                                 <a class="btn btn-light border btn-sm text-dark fw-bold rounded-pill px-3 d-flex align-items-center gap-1 shadow-sm" href="{{ route('ayuda.index') }}" title="Manual e Instrucciones del Sistema">
                                     <i class="bi bi-book-half text-primary"></i> Manual / Ayuda
@@ -210,14 +257,17 @@
                                           style="width:30px;height:30px;background:#eef1ff;font-size:0.85rem;color:#4361ee;font-weight:700;">
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </span>
-                                    <span style="font-size:0.875rem;font-weight:500;color:#374151;">
+                                    <span style="font-size:0.875rem;font-weight:500;">
                                         {{ Auth::user()->name }}
                                     </span>
                                 </a>
-                                <div class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
+                                <div class="dropdown-menu dropdown-menu-end shadow-sm border-0" aria-labelledby="navbarDropdown">
                                     <a class="dropdown-item" href="{{ route('perfil.edit') }}">
                                         <i class="bi bi-person me-2 text-primary"></i>Mi Perfil
                                     </a>
+                                    <button class="dropdown-item d-flex align-items-center gap-2" onclick="toggleTheme()">
+                                        <i class="bi bi-moon-stars-fill theme-toggle-icon text-warning me-1"></i>Modo Oscuro / Claro
+                                    </button>
                                     <a class="dropdown-item" href="{{ route('ayuda.index') }}">
                                         <i class="bi bi-book me-2 text-warning"></i>Manual e Instrucciones
                                     </a>
@@ -321,6 +371,39 @@
         document.addEventListener('contextmenu', function(e) {
             if (e.target.tagName === 'IMG' || e.target.tagName === 'BUTTON' || e.target.closest('.btn') || e.target.closest('a')) {
                 e.preventDefault();
+            }
+        });
+
+        // Función para cambiar a Modo Pantalla Completa en Móvil (sin bordes de navegador)
+        function toggleFullScreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                const el = document.documentElement;
+                if (el.requestFullscreen) {
+                    el.requestFullscreen();
+                } else if (el.webkitRequestFullscreen) {
+                    el.webkitRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        // Registro de Service Worker para PWA (Habilita instalación en móvil sin bordes de navegador)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register("{{ asset('sw.js') }}", { scope: "{{ asset('./') }}" })
+                    .then(function(reg) {
+                        console.log('PWA ServiceWorker activo:', reg.scope);
+                    })
+                    .catch(function(err) {
+                        console.log('PWA ServiceWorker error:', err);
+                    });
+            });
+        }
     </script>
 </body>
 </html>

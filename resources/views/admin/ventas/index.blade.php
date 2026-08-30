@@ -100,9 +100,12 @@
                             </td>
                             <td class="fw-bold {{ $factura->estado === 'activa' ? 'text-success' : 'text-decoration-line-through text-muted' }}">Bs {{ number_format($factura->monto_pagado, 2) }}</td>
                             <td class="text-end pe-4">
-                                <button type="button" onclick="verDetalleFactura({{ $factura->id }}, '{{ route('admin.ventas.detalle', $factura->id, false) }}')" class="btn btn-sm btn-outline-primary rounded-pill px-3" title="Ver Detalle">
+                                <button type="button" onclick="verDetalleFactura({{ $factura->id }}, '{{ route('admin.ventas.detalle', $factura->id, false) }}')" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1" title="Ver Detalle">
                                     <i class="bi bi-eye-fill"></i> Detalle
                                 </button>
+                                <a href="{{ route('admin.ventas.pdf', $factura->id) }}" target="_blank" class="btn btn-sm btn-outline-danger rounded-pill px-3" title="Ver / Descargar PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </a>
                             </td>
                         </tr>
                     @empty

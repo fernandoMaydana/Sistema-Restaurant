@@ -114,26 +114,48 @@
                                 </div>
                             </div>
 
-                            <div class="col-md-7 mt-5">
-                                <label class="form-label fs-4 fw-bold text-primary">Efectivo Recibido</label>
-                                <div class="input-group">
+                            <div class="col-md-7 mt-4">
+                                <label class="form-label fs-5 fw-bold text-primary d-flex justify-content-between align-items-center">
+                                    <span>Efectivo Recibido</span>
+                                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold rounded-pill" onclick="setMontoExacto()">
+                                        <i class="bi bi-box-arrow-in-down me-1"></i>Monto Exacto
+                                    </button>
+                                </label>
+                                <div class="input-group mb-3">
                                     <span class="input-group-text bg-primary text-white border-0 fs-3 fw-bold">Bs</span>
                                     <input type="number" step="0.01" min="{{ $pedido->total }}"
-                                           name="monto_pagado" id="monto_pagado" class="form-control form-control-lg border-primary border-2 fs-1 fw-black"
+                                           name="monto_pagado" id="monto_pagado" class="form-control form-control-lg border-primary border-2 fs-1 fw-black text-end"
                                            value="{{ old('monto_pagado', number_format($pedido->total, 2, '.', '')) }}"
-                                           required oninput="calcCambio()" style="height: 100px;">
+                                           required autofocus oninput="calcCambio()" style="height: 70px;">
                                 </div>
                             </div>
 
-                            <div class="col-md-5 mt-5 d-flex flex-column justify-content-center">
-                                <div class="bg-success-subtle p-4 rounded-4 border border-success-subtle text-center h-100 d-flex flex-column justify-content-center">
+                            <div class="col-md-5 mt-4 d-flex flex-column justify-content-between">
+                                <div class="bg-success-subtle p-4 rounded-4 border border-success-subtle text-center mb-3 d-flex flex-column justify-content-center">
                                     <span class="text-success fw-bold fs-5 d-block mb-1">CAMBIO A DEVOLVER:</span>
-                                    <span id="cambio-display" class="text-success fw-black fs-1">Bs 0.00</span>
+                                    <span id="cambio-display" class="text-success fw-black display-4">Bs 0.00</span>
+                                </div>
+
+                                <div class="bg-white p-4 rounded-4 border shadow-sm">
+                                    <h6 class="fw-bold mb-3 text-dark"><i class="bi bi-info-circle me-2 text-primary"></i>Resumen de Cobro</h6>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Total Venta:</span>
+                                        <span class="fw-bold text-dark">Bs {{ number_format($pedido->total, 2) }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">Recibido:</span>
+                                        <span class="fw-bold text-primary" id="resumen-recibido">Bs {{ number_format($pedido->total, 2) }}</span>
+                                    </div>
+                                    <hr class="my-2">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold text-dark">Vuelto:</span>
+                                        <span class="fw-bold text-success" id="resumen-vuelto">Bs 0.00</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-12 mt-5">
-                                <button type="submit" class="btn btn-primary w-100 py-4 fs-3 fw-black rounded-4 shadow">
+                            <div class="col-12 mt-4">
+                                <button type="submit" class="btn btn-primary w-100 py-3 fs-3 fw-black rounded-4 shadow">
                                     <i class="bi bi-check2-circle me-3"></i>
                                     PROCESAR COBRO · LIBERAR MESA
                                 </button>
@@ -149,15 +171,35 @@
 </div>
 
 <script>
+const TOTAL_PEDIDO = {{ $pedido->total }};
+
 function calcCambio() {
-    const totalOriginal = {{ $pedido->total }};
-    const montoRecibido = parseFloat(document.getElementById('monto_pagado').value) || 0;
-    const cambio = Math.max(0, montoRecibido - totalOriginal);
-    document.getElementById('cambio-display').textContent = 'Bs ' + cambio.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const input = document.getElementById('monto_pagado');
+    const montoRecibido = parseFloat(input.value) || 0;
+    const cambio = Math.max(0, montoRecibido - TOTAL_PEDIDO);
+    
+    const formattedCambio = 'Bs ' + cambio.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    document.getElementById('cambio-display').textContent = formattedCambio;
+    document.getElementById('resumen-vuelto').textContent = formattedCambio;
+    document.getElementById('resumen-recibido').textContent = 'Bs ' + montoRecibido.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Calcular al cargar
-calcCambio();
+function setMontoExacto() {
+    const input = document.getElementById('monto_pagado');
+    input.value = TOTAL_PEDIDO.toFixed(2);
+    input.focus();
+    calcCambio();
+}
+
+// Auto-seleccionar el input al cargar para tipeo directo en PC
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('monto_pagado');
+    if (input) {
+        input.focus();
+        input.select();
+    }
+    calcCambio();
+});
 </script>
 
 <style>
