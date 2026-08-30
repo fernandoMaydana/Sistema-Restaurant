@@ -82,6 +82,10 @@
                         <i class="bi bi-printer me-2"></i> IMPRIMIR FACTURA (TICKET)
                     </button>
 
+                    <button onclick="imprimirComandaDirecta()" class="btn btn-warning btn-lg fw-bold py-3 shadow-sm rounded-4 text-dark" id="btn-imprimir-comanda">
+                        <i class="bi bi-fire me-2"></i> IMPRIMIR COMANDA PARA COCINA
+                    </button>
+
                     <a href="{{ route('cajero.factura.pdf', $factura->id) }}" target="_blank" class="btn btn-outline-danger btn-lg fw-bold py-3 shadow-sm rounded-4">
                         <i class="bi bi-file-earmark-pdf-fill me-2"></i> VER / DESCARGAR PDF
                     </a>
@@ -160,6 +164,56 @@
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.classList.replace('btn-success', 'btn-primary');
+                    btn.disabled = false;
+                }, 2000);
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error de Impresora',
+                    text: data.message,
+                    confirmButtonColor: '#e63946'
+                });
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(e => {
+            console.error("Error de red.", e);
+            Swal.fire({
+                icon: 'error',
+                title: 'Error de Red',
+                text: 'Hubo un error de red al intentar comunicarse con la ticketera.',
+                confirmButtonColor: '#e63946'
+            });
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
+
+    function imprimirComandaDirecta() {
+        const btn = document.getElementById('btn-imprimir-comanda');
+        const originalText = btn.innerHTML;
+        
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Imprimiendo Comanda...';
+        btn.disabled = true;
+
+        fetch('{{ route('cajero.api.imprimir.comanda', $factura->pedido_id) }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if(data.success) {
+                btn.innerHTML = '<i class="bi bi-check-circle me-2"></i>¡Comanda Enviada!';
+                btn.classList.replace('btn-warning', 'btn-success');
+                btn.classList.replace('text-dark', 'text-white');
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.classList.replace('btn-success', 'btn-warning');
+                    btn.classList.replace('text-white', 'text-dark');
                     btn.disabled = false;
                 }, 2000);
             } else {
