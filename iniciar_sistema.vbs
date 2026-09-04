@@ -30,11 +30,39 @@ For Each objItem in colItems
 Next
 On Error GoTo 0
 
-' 1. Ejecutar el servidor de Laravel de forma 100% oculta escuchando en todas las interfaces (0.0.0.0:8000)
-WshShell.Run "php artisan serve --host 0.0.0.0 --port 8000", 0, false
+' Funcion para verificar si el servidor responde en http://127.0.0.1:8000
+Function ServidorEstaListo()
+    On Error Resume Next
+    Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    http.open "GET", "http://127.0.0.1:8000", False
+    http.setTimeouts 1000, 1000, 1000, 1000
+    http.send
+    If Err.Number = 0 Then
+        ServidorEstaListo = True
+    Else
+        ServidorEstaListo = False
+    End If
+    On Error GoTo 0
+End Function
 
-' Esperar 3 segundos para que el servidor de Laravel responda
-WScript.Sleep 3000
+' 1. Verificar si el servidor YA esta encendido
+If Not ServidorEstaListo() Then
+    ' Iniciar el servidor de Laravel de forma 100% oculta en segundo plano
+    WshShell.Run "php artisan serve --host 0.0.0.0 --port 8000", 0, False
 
-' 2. Abrir el navegador automaticamente con la IP local detectada
-WshShell.Run "cmd /c start http://" & strIP & ":8000", 0, false
+    ' 2. Esperar activamente (Loop) hasta que el puerto responda (maximo 15 segundos)
+    Dim intentos, listo
+    intentos = 0
+    listo = False
+    Do While intentos < 30 And Not listo
+        WScript.Sleep 500
+        intentos = intentos + 1
+        If ServidorEstaListo() Then
+            listo = True
+        End If
+    Loop
+End If
+
+' 3. Abrir el navegador automaticamente con la IP local detectada
+WshShell.Run "cmd /c start http://" & strIP & ":8000", 0, False
+
